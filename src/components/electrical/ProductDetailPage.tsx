@@ -42,6 +42,7 @@ import {
 } from '../../data/wireColors';
 import { checkKolkataDeliveryService } from '../../data/kolkataAreas';
 import { trackProductView } from '../../utils/analytics';
+import { hapticLight, hapticMedium } from '../../utils/haptics';
 import { SEOHead } from '../SEOHead';
 
 interface ProductDetailPageProps {
@@ -135,6 +136,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   const handleToggleWishlist = () => {
     if (!product) return;
+    hapticLight();
     const newState = toggleProductFavorite(String(product.id));
     setIsWishlisted(newState);
     setWishlistToast(newState ? 'Added to wishlist!' : 'Removed from wishlist');
@@ -559,7 +561,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 {product.stock_quantity > 0 ? (
                   <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:min-w-[360px] md:min-w-[400px]">
                     <button
-                      onClick={() => onAddToCart(adaptToCartProduct(product))}
+                      onClick={() => {
+                        hapticMedium();
+                        onAddToCart(adaptToCartProduct(product));
+                      }}
                       className="py-3 px-4 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98 border border-yellow-500/40"
                     >
                       <ShoppingCart className="w-4 h-4 shrink-0" />
@@ -568,6 +573,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                     <button
                       onClick={() => {
+                        hapticMedium();
                         onAddToCart(adaptToCartProduct(product));
                         onOpenCart();
                       }}

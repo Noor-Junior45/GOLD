@@ -612,7 +612,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-16 font-sans">
+    <div className="min-h-screen bg-white text-slate-900 pb-4 sm:pb-6 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12 sm:space-y-16 pt-3 sm:pt-4">
 
         {/* =====================================================================

@@ -10,6 +10,9 @@ import {
 } from '../data/wireColors';
 import { checkKolkataDeliveryService } from '../data/kolkataAreas';
 import { trackProductView } from '../utils/analytics';
+import { hapticLight, hapticMedium } from '../utils/haptics';
+
+import { ProductReviewsSection } from './ProductReviewsSection';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -17,6 +20,7 @@ interface ProductDetailModalProps {
   quantityInCart: number;
   onAddToCart: (product: Product) => void;
   onUpdateQuantity: (productId: string, delta: number) => void;
+  onOpenAuth?: () => void;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -24,7 +28,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   quantityInCart,
   onAddToCart,
-  onUpdateQuantity
+  onUpdateQuantity,
+  onOpenAuth
 }) => {
   const [isFav, setIsFav] = useState(() => (product ? isProductFavorite(product.id) : false));
   const [copiedLink, setCopiedLink] = useState(false);
@@ -71,11 +76,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   const handleToggleFav = () => {
+    hapticLight();
     const updated = toggleProductFavorite(product.id);
     setIsFav(updated);
   };
 
   const handleShare = () => {
+    hapticLight();
     if (navigator.clipboard) {
       const shareUrl = `${window.location.origin}/electrical/product/${product.id}`;
       navigator.clipboard.writeText(shareUrl);
@@ -85,6 +92,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   const handleAdd = () => {
+    hapticMedium();
     onAddToCart({
       ...product,
       selectedColor: hasColorOptions ? selectedWireColor : undefined
@@ -534,6 +542,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Ratings & Customer Reviews with Supabase Integration */}
+              <div className="pt-4 border-t border-slate-200">
+                <ProductReviewsSection
+                  productId={product.id}
+                  productName={product.name}
+                  onOpenAuth={onOpenAuth}
+                />
               </div>
             </div>
 

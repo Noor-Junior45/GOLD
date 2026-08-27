@@ -30,13 +30,22 @@ import {
   Clock,
   Edit2,
   Receipt,
-  X
+  X,
+  Building2
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { createFirestoreOrder, getStoredAddresses } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS, getProductColorOptions } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
+import {
+  hapticLight,
+  hapticMedium,
+  hapticSuccess,
+  hapticWarning,
+  hapticError,
+  hapticSelection
+} from '../utils/haptics';
 import {
   Offer,
   validateAndCalculateCoupon,
@@ -261,6 +270,7 @@ export const CartView: React.FC<CartViewProps> = ({
 
   // Handle Save for Later
   const handleSaveForLater = async (product: Product) => {
+    hapticWarning();
     const updated = await saveItemForLater(product);
     setSavedItems(updated);
     onRemoveItem(product.id, product.selectedColor);
@@ -268,6 +278,7 @@ export const CartView: React.FC<CartViewProps> = ({
 
   // Move from Saved to Cart
   const handleMoveToCart = async (saved: SavedItemRecord) => {
+    hapticMedium();
     if (onAddToCart) {
       onAddToCart(saved.product);
     } else {
@@ -279,12 +290,14 @@ export const CartView: React.FC<CartViewProps> = ({
 
   // Delete Saved Item
   const handleDeleteSavedItem = async (productId: string) => {
+    hapticWarning();
     const updated = await removeSavedItem(productId);
     setSavedItems(updated);
   };
 
   // Handle Single Item "Buy this now"
   const handleBuyThisNow = (item: CartItem) => {
+    hapticMedium();
     // 1. Gated: Must be logged in first
     const isLoggedIn = Boolean(
       userProfile?.id ||
@@ -296,6 +309,7 @@ export const CartView: React.FC<CartViewProps> = ({
     );
 
     if (!isLoggedIn) {
+      hapticError();
       setShowLoginRequiredModal(true);
       return;
     }
@@ -311,6 +325,7 @@ export const CartView: React.FC<CartViewProps> = ({
     );
 
     if (!hasAddress) {
+      hapticError();
       setShowAddressRequiredModal(true);
       return;
     }
@@ -336,6 +351,7 @@ export const CartView: React.FC<CartViewProps> = ({
     );
 
     if (!isLoggedIn) {
+      hapticError();
       setShowLoginRequiredModal(true);
       return;
     }
@@ -351,10 +367,12 @@ export const CartView: React.FC<CartViewProps> = ({
     );
 
     if (!hasAddress) {
+      hapticError();
       setShowAddressRequiredModal(true);
       return;
     }
 
+    hapticMedium();
     setCheckoutMode('all');
     setSingleCheckoutItem(null);
     setPaymentMethod('cod'); // Default to cash
@@ -368,6 +386,7 @@ export const CartView: React.FC<CartViewProps> = ({
     setCouponSuccess(null);
     const code = (customCode !== undefined ? customCode : promoCode).trim().toUpperCase();
     if (!code) {
+      hapticError();
       setCouponError('Please enter a coupon code.');
       return;
     }
@@ -388,16 +407,19 @@ export const CartView: React.FC<CartViewProps> = ({
       );
 
       if (!result.success) {
+        hapticError();
         setCouponError(result.message || 'Invalid coupon code or not applicable to items in cart.');
         setDiscountApplied(0);
         setAppliedOffer(null);
       } else {
+        hapticSuccess();
         setPromoCode(code);
         setDiscountApplied(result.discountAmount);
         setAppliedOffer(result.offer || null);
         setCouponSuccess(result.message || `Coupon ${code} applied successfully! Saved ₹${result.discountAmount}.`);
       }
     } catch (err) {
+      hapticError();
       console.error('Error validating coupon with fresh storefront offers:', err);
       setCouponError('Unable to validate coupon at this moment. Please try again.');
     } finally {
@@ -406,6 +428,7 @@ export const CartView: React.FC<CartViewProps> = ({
   };
 
   const handleRemoveCoupon = () => {
+    hapticWarning();
     setDiscountApplied(0);
     setAppliedOffer(null);
     setPromoCode('');
@@ -439,6 +462,7 @@ export const CartView: React.FC<CartViewProps> = ({
       'Customer';
 
     if (!resolvedPhone || !resolvedName || !resolvedAddress) {
+      hapticError();
       alert('Please provide your name, mobile phone, and delivery address.');
       return;
     }
@@ -532,7 +556,8 @@ export const CartView: React.FC<CartViewProps> = ({
         console.warn('Backend order notification notice:', e)
       );
 
-      // Celebrate with confetti
+      // Celebrate with confetti & haptics
+      hapticSuccess();
       try {
         confetti({
           particleCount: 80,
@@ -546,6 +571,7 @@ export const CartView: React.FC<CartViewProps> = ({
       setIsCheckoutOpen(false);
       onOrderPlaced(created);
     } catch (err: any) {
+      hapticError();
       console.error('Failed to place order:', err);
       alert(err?.message || 'An error occurred while placing your order. Please try again.');
     } finally {
@@ -568,19 +594,20 @@ export const CartView: React.FC<CartViewProps> = ({
             Looks like you haven't added any electrical supplies, wiring cables, or construction materials to your cart yet.
           </p>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={onContinueShopping}
-              className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black py-3.5 px-6 rounded-2xl shadow-sm transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black py-3 px-4 rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-amber-500/30 whitespace-nowrap"
             >
-              <Zap className="w-5 h-5 fill-slate-950" />
-              <span>Explore Electrical Catalog</span>
+              <Zap className="w-4 h-4 fill-slate-950 shrink-0" />
+              <span>Electrical Items</span>
             </button>
             <button
               onClick={() => window.location.href = '/construction'}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 px-6 rounded-2xl transition active:scale-98 text-sm cursor-pointer"
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold py-3 px-4 rounded-xl shadow-2xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-slate-200 whitespace-nowrap"
             >
-              Browse Construction Materials
+              <Building2 className="w-4 h-4 text-slate-700 shrink-0" />
+              <span>Construction Items</span>
             </button>
           </div>
         </div>
@@ -1361,7 +1388,10 @@ export const CartView: React.FC<CartViewProps> = ({
 
               {/* Option 1: Cash on Delivery (COD) - Medium Box Size */}
               <div
-                onClick={() => setPaymentMethod('cod')}
+                onClick={() => {
+                  hapticSelection();
+                  setPaymentMethod('cod');
+                }}
                 className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer relative flex items-center justify-between gap-3 ${
                   paymentMethod === 'cod'
                     ? 'border-emerald-500 bg-emerald-50/50 ring-1.5 ring-emerald-400 shadow-xs'
@@ -1393,7 +1423,10 @@ export const CartView: React.FC<CartViewProps> = ({
 
               {/* Option 2: UPI / QR Instant Pay - Medium Box Size */}
               <div
-                onClick={() => setPaymentMethod('upi')}
+                onClick={() => {
+                  hapticSelection();
+                  setPaymentMethod('upi');
+                }}
                 className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer relative flex items-center justify-between gap-3 ${
                   paymentMethod === 'upi'
                     ? 'border-blue-500 bg-blue-50/50 ring-1.5 ring-blue-400 shadow-xs'
@@ -1420,7 +1453,10 @@ export const CartView: React.FC<CartViewProps> = ({
 
               {/* Option 3: Cards & Net Banking - Medium Box Size */}
               <div
-                onClick={() => setPaymentMethod('card')}
+                onClick={() => {
+                  hapticSelection();
+                  setPaymentMethod('card');
+                }}
                 className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer relative flex items-center justify-between gap-3 ${
                   paymentMethod === 'card'
                     ? 'border-purple-500 bg-purple-50/50 ring-1.5 ring-purple-400 shadow-xs'
@@ -1472,7 +1508,13 @@ export const CartView: React.FC<CartViewProps> = ({
                     Placing Order...
                   </span>
                 ) : (
-                  <span>Place Order (COD/UPI)</span>
+                  <span>
+                    {paymentMethod === 'cod'
+                      ? 'Place Order (COD)'
+                      : paymentMethod === 'upi'
+                      ? 'Place Order (UPI)'
+                      : 'Place Order'}
+                  </span>
                 )}
               </button>
 

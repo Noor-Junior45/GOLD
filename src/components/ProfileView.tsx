@@ -35,11 +35,13 @@ import {
   AlertCircle,
   Truck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Download
 } from 'lucide-react';
 import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product, OrderStatus } from '../types';
 import { LegalView } from './LegalViews';
 import { HelpCenterChat } from './HelpCenterChat';
+import { downloadInvoicePDF } from '../utils/invoiceGenerator';
 import {
   saveUserProfile,
   signOutUser,
@@ -148,6 +150,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [confirmClearAllOrders, setConfirmClearAllOrders] = useState(false);
   const [isClearingOrders, setIsClearingOrders] = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+
+  const handleDirectDownloadPDF = async (order: Order) => {
+    try {
+      setDownloadingInvoiceId(order.id);
+      await downloadInvoicePDF(order);
+    } catch (err) {
+      console.error('Failed to generate PDF invoice:', err);
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  };
 
   const handleDeleteSingleOrder = async (order: Order) => {
     try {
@@ -684,6 +698,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                         <button
                           type="button"
+                          disabled={downloadingInvoiceId === order.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDirectDownloadPDF(order);
+                          }}
+                          className="h-8 px-3 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 flex items-center gap-1.5 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                          title="Download official Invoice PDF directly"
+                          aria-label={`Download Invoice for order #${order.id}`}
+                        >
+                          {downloadingInvoiceId === order.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
+                              <span>Downloading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Invoice</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOrderToDelete(order);
@@ -905,15 +943,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <span>Delete</span>
                           </button>
 
-                          {order.items && order.items.length > 0 && (
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => onReorder(order.items)}
-                              className="px-3.5 py-1.5 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-[#FFD2C9]"
+                              type="button"
+                              disabled={downloadingInvoiceId === order.id}
+                              onClick={() => handleDirectDownloadPDF(order)}
+                              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                              title="Download official A4 PDF Invoice directly"
                             >
-                              <span>REORDER</span>
-                              <ChevronRight className="w-3.5 h-3.5" />
+                              {downloadingInvoiceId === order.id ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>Downloading PDF...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Download PDF Invoice</span>
+                                </>
+                              )}
                             </button>
-                          )}
+
+                            {order.items && order.items.length > 0 && (
+                              <button
+                                onClick={() => onReorder(order.items)}
+                                className="px-3.5 py-1.5 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-[#FFD2C9]"
+                              >
+                                <span>REORDER</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -2308,7 +2368,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* App Version Tag & Build Status */}
         <div className="text-center pt-6 pb-2 space-y-1">
           <p className="text-[11px] font-bold text-slate-500">
-            Giriraj Power App Version 2.4.0
+            BuildNow App Version 2.4.0
           </p>
           <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>

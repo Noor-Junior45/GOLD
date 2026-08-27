@@ -3,6 +3,7 @@ import { Plus, Minus, Star, Eye, Heart, Check, ShoppingCart } from 'lucide-react
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
+import { hapticLight, hapticMedium } from '../utils/haptics';
 
 interface ProductCardProps {
   product: Product;
@@ -36,11 +37,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    hapticLight();
     const updatedState = toggleProductFavorite(product.id);
     setIsFav(updatedState);
   };
 
   const handleAdd = () => {
+    hapticMedium();
     onAddToCart({
       ...product,
       selectedColor: isWire ? selectedWireColor : undefined

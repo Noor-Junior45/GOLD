@@ -17,12 +17,15 @@ import {
   ShieldCheck,
   CreditCard,
   Banknote,
-  ReceiptText
+  ReceiptText,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Order } from '../types';
 import { getOrderWhatsAppUrl } from '../services/emailService';
 import { deleteFirestoreOrder, clearAllUserOrders } from '../services/supabaseService';
 import { OrderTrackingTimeline } from './OrderTrackingTimeline';
+import { downloadInvoicePDF } from '../utils/invoiceGenerator';
 
 interface OrderHistoryViewProps {
   orders: Order[];
@@ -41,9 +44,21 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [filterTab, setFilterTab] = useState<'all' | 'active' | 'delivered'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedOrderId((prev) => (prev === id ? null : id));
+  };
+
+  const handleDirectDownloadPDF = async (order: Order) => {
+    try {
+      setDownloadingInvoiceId(order.id);
+      await downloadInvoicePDF(order);
+    } catch (err) {
+      console.error('Error generating PDF invoice:', err);
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
   };
 
   // Filter & Search Logic
@@ -489,6 +504,30 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
+                        disabled={downloadingInvoiceId === order.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDirectDownloadPDF(order);
+                        }}
+                        className="px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                        title="Download official Invoice PDF directly"
+                        aria-label={`Download Invoice for order #${order.id}`}
+                      >
+                        {downloadingInvoiceId === order.id ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
+                            <span>Downloading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Invoice</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOrderToDelete(order);
@@ -674,12 +713,22 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => printOrderInvoice(order)}
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-colors border border-slate-200 cursor-pointer"
-                          title="Print or Save official GST invoice"
+                          disabled={downloadingInvoiceId === order.id}
+                          onClick={() => handleDirectDownloadPDF(order)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                          title="Download official A4 PDF invoice directly"
                         >
-                          <Printer className="w-3.5 h-3.5 text-slate-600" />
-                          <span>Tax Invoice</span>
+                          {downloadingInvoiceId === order.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Downloading PDF...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download PDF Invoice</span>
+                            </>
+                          )}
                         </button>
                       </div>
 

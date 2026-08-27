@@ -2,8 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   Mail,
-  MapPin,
-  Download
+  MapPin
 } from 'lucide-react';
 
 interface FooterProps {
@@ -12,10 +11,10 @@ interface FooterProps {
   onOpenInstallApp?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
+export const Footer: React.FC<FooterProps> = () => {
   return (
-    <footer className="bg-slate-900 text-slate-300 text-xs mt-16 relative border-t-4 border-amber-400 font-sans shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-8">
+    <footer className="bg-slate-900 text-slate-300 text-xs mt-6 sm:mt-8 relative border-t-4 border-amber-400 font-sans shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-28 sm:pb-12">
         
         {/* 3 Headings Column Grid (Company, Policy, Contact) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 pb-10 border-b border-slate-800">
@@ -48,22 +47,6 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
                   <span>FAQ's</span>
                 </Link>
               </li>
-
-              {/* 3. Download App */}
-              {onOpenInstallApp && (
-                <li>
-                  <button
-                    onClick={onOpenInstallApp}
-                    className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span className="text-emerald-500">›</span>
-                    <span className="flex items-center gap-1">
-                      <span>Download App</span>
-                      <Download className="w-3 h-3 text-emerald-400" />
-                    </span>
-                  </button>
-                </li>
-              )}
             </ul>
           </div>
 
@@ -155,15 +138,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
 
         </div>
 
-        {/* Bottom Bar: Copyright & Version */}
+        {/* Bottom Bar: Copyright & Serving Info */}
         <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>© {new Date().getFullYear()} All rights reserved.</p>
           <div className="flex items-center gap-2 text-[10px] text-slate-400">
             <span>Certified Depot • Serving Kolkata</span>
-            <span className="text-slate-600">•</span>
-            <span className="font-mono text-slate-500 bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/40">
-              v2.4.0
-            </span>
           </div>
         </div>
 

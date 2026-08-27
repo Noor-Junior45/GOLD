@@ -5,6 +5,7 @@ import { INITIAL_PRODUCTS } from './data/products';
 import { KOLKATA_AREAS } from './data/kolkataAreas';
 import { Header } from './components/Header';
 import { LocationModal } from './components/LocationModal';
+import { DeviceLocationPromptModal } from './components/DeviceLocationPromptModal';
 import { LoginPage } from './components/LoginPage';
 import { ProfileView } from './components/ProfileView';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -24,6 +25,7 @@ import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { InstallAppModal } from './components/InstallAppModal';
 import { SEOHead } from './components/SEOHead';
 import { trackPageView, trackAddToCart as trackGAAddToCart, trackRemoveFromCart as trackGARemoveFromCart, trackProductView } from './utils/analytics';
+import { hapticLight, hapticMedium, hapticWarning } from './utils/haptics';
 import {
   fetchCartItemsFromSupabase,
   syncCartItemToSupabase,
@@ -105,6 +107,7 @@ export default function App() {
   
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isDeviceLocationPromptOpen, setIsDeviceLocationPromptOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
@@ -299,6 +302,43 @@ export default function App() {
     };
   }, []);
 
+  // Check device location permission on app open; if not granted/closed, show bottom popup
+  useEffect(() => {
+    try {
+      const dismissed = sessionStorage.getItem('buildnow_device_loc_prompt_dismissed');
+      if (dismissed === 'true') return;
+    } catch {}
+
+    const timer = setTimeout(async () => {
+      try {
+        if ('permissions' in navigator && navigator.permissions?.query) {
+          const status = await navigator.permissions.query({ name: 'geolocation' });
+          if (status.state !== 'granted') {
+            setIsDeviceLocationPromptOpen(true);
+          }
+          status.onchange = () => {
+            if (status.state === 'granted') {
+              setIsDeviceLocationPromptOpen(false);
+            }
+          };
+        } else {
+          setIsDeviceLocationPromptOpen(true);
+        }
+      } catch {
+        setIsDeviceLocationPromptOpen(true);
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleCloseDeviceLocationPrompt = () => {
+    setIsDeviceLocationPromptOpen(false);
+    try {
+      sessionStorage.setItem('buildnow_device_loc_prompt_dismissed', 'true');
+    } catch {}
+  };
+
   // Global Scroll Reset and GA4 Page View on route change
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -311,6 +351,7 @@ export default function App() {
 
   const handleAddToCart = (product: Product) => {
     const productCol = product.selectedColor || undefined;
+    hapticMedium();
     trackGAAddToCart(product, 1, productCol);
     setCartItems((prev) => {
       const existing = prev.find(
@@ -333,6 +374,11 @@ export default function App() {
   };
 
   const handleUpdateCartQuantity = (productId: string, delta: number, color?: string) => {
+    if (delta > 0) {
+      hapticLight();
+    } else {
+      hapticLight();
+    }
     setCartItems((prev) => {
       return prev
         .map((i) => {
@@ -345,6 +391,7 @@ export default function App() {
               trackGARemoveFromCart(i.product, Math.abs(delta));
             }
             if (newQty <= 0) {
+              hapticWarning();
               removeCartItemFromSupabase(productId).catch(() => {});
               return null; // remove from cart when reaching 0
             }
@@ -358,6 +405,7 @@ export default function App() {
   };
 
   const handleRemoveCartItem = (productId: string, color?: string) => {
+    hapticWarning();
     removeCartItemFromSupabase(productId).catch(() => {});
     setCartItems((prev) => {
       const itemToRemove = prev.find(
@@ -379,6 +427,7 @@ export default function App() {
   };
 
   const handleClearCart = () => {
+    hapticWarning();
     clearCartInSupabase().catch(() => {});
     setCartItems([]);
   };
@@ -782,6 +831,26 @@ export default function App() {
         isOpen={isInstallModalOpen}
         onClose={() => setIsInstallModalOpen(false)}
       />
+      <DeviceLocationPromptModal
+        isOpen={isDeviceLocationPromptOpen}
+        onClose={handleCloseDeviceLocationPrompt}
+        savedAddresses={savedAddresses}
+        currentArea={currentArea}
+        activeAddress={activeSavedAddress}
+        onSelectArea={(area, addr) => {
+          setCurrentArea(area);
+          if (addr) {
+            setActiveSavedAddress(addr);
+          } else {
+            setActiveSavedAddress(null);
+          }
+          handleCloseDeviceLocationPrompt();
+        }}
+        onOpenManualSearch={() => {
+          handleCloseDeviceLocationPrompt();
+          setIsLocationModalOpen(true);
+        }}
+      />
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
@@ -809,6 +878,7 @@ export default function App() {
         }
         onAddToCart={handleAddToCart}
         onUpdateQuantity={handleUpdateCartQuantity}
+        onOpenAuth={() => navigate('/auth')}
       />
 
       <MapsGroundingAssistant
