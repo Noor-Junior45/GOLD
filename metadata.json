@@ -1,0 +1,6 @@
+{
+  "name": "BuildNow",
+  "description": "Kolkata's trusted electrical, construction, hardware & real estate wholesale platform with delivery in 60 Mins to 7 Days for large stocks.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

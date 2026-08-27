@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .font-bodoni {
+    font-family: 'Bodoni Moda', 'Libre Bodoni', 'Bodoni MT', 'Didot', 'Didot LT STD', 'Hoefler Text', 'Garamond', 'Times New Roman', serif;
+  }
+
+  .font-sf-pro {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+/* =========================================================================
+   GLASSMORPHISM & MESH GRADIENT STYLES
+   ========================================================================= */
+
+/* Soft light mesh gradient background with pale off-white, light green & soft yellow hints */
+.glass-mesh-bg {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(220, 252, 231, 0.55) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(254, 240, 138, 0.45) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(224, 242, 254, 0.35) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(254, 249, 195, 0.4) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(209, 250, 229, 0.5) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Reusable Glass Panel Class */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+/* Glass Pill / Floating Navigation */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+/* Glass Card with Smooth Hover Interaction */
+.glass-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.04);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.09), 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+/* Vibrant Gradient CTA Button */
+.glass-btn-cta {
+  background: linear-gradient(135deg, #10b981 0%, #059669 45%, #047857 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.4);
+  transition: all 0.25s ease;
+}
+
+.glass-btn-cta:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+  box-shadow: 0 12px 28px -4px rgba(16, 185, 129, 0.5);
+  transform: translateY(-1px);
+}
+
+.glass-btn-warm {
+  background: linear-gradient(135deg, #eab308 0%, #f59e0b 50%, #d97706 100%);
+  color: #0f172a;
+  box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.35);
+  transition: all 0.25s ease;
+}
+
+.glass-btn-warm:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 28px -4px rgba(245, 158, 11, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Blueprint Grid Pattern */
+.bg-blueprint-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.bg-blueprint-dark {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Hide scrollbar for clean horizontal product & category sliders */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.92; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}
+
+/* Continuous slow-moving marquee (right to left) */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-slow {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 45s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-slow:hover {
+  animation-play-state: paused;
+}
+
+.animate-marquee-text {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-text:hover {
+  animation-play-state: paused;
+}
+
+
+

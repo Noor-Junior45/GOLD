@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "Customer quick-commerce material orders",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 25 },
+        "address": { "type": "string", "maxLength": 300 },
+        "area": { "type": "string", "maxLength": 100 },
+        "pincode": { "type": "string", "maxLength": 10 },
+        "landmark": { "type": "string", "maxLength": 150 },
+        "items": { "type": "array", "description": "Purchased items with quantity and product details" },
+        "itemTotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "handlingFee": { "type": "number" },
+        "discount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["cod", "upi", "card", "paytm", "netbanking"] },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "failed"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "packed", "out_for_delivery", "delivered", "cancelled"] },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "estimatedDeliveryTimestamp": { "type": "number" },
+        "deliveryPartner": { "type": "object", "description": "Assigned express delivery rider info" },
+        "notes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "customerName", "phone", "address", "area", "items", "totalAmount", "status", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Catalog item in Giriraj Power inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "brand": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "enum": ["electrical", "services", "construction", "emergency"] },
+        "subCategory": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "discountPercentage": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 50 },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "deliveryMinutes": { "type": "number" },
+        "image": { "type": "string", "maxLength": 500 },
+        "inStock": { "type": "boolean" },
+        "stockCount": { "type": "number" },
+        "isEmergency": { "type": "boolean" },
+        "specs": { "type": "object" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "tags": { "type": "array" }
+      },
+      "required": ["id", "name", "brand", "category", "price", "unit", "inStock"]
+    },
+    "ServiceBooking": {
+      "title": "ServiceBooking",
+      "description": "Licensed electrical and wiring service booking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 25 },
+        "buildingType": { "type": "string", "maxLength": 50 },
+        "projectStage": { "type": "string", "maxLength": 50 },
+        "estimatedAreaSqFt": { "type": "number" },
+        "requestedDate": { "type": "string", "maxLength": 50 },
+        "requestedTimeSlot": { "type": "string", "maxLength": 50 },
+        "area": { "type": "string", "maxLength": 100 },
+        "address": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "in_progress", "completed", "cancelled"] },
+        "estimatedPrice": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "customerName", "phone", "buildingType", "projectStage", "status", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with saved addresses and preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 25 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 100 },
+        "address": { "type": "string", "maxLength": 300 },
+        "area": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "phone", "name"]
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer express orders with tracking and item details"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Inventory product catalog"
+    },
+    "/services_bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/ServiceBooking" },
+      "description": "Wiring and installation service appointments"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Registered user contact and address profiles"
+    }
+  }
+}
