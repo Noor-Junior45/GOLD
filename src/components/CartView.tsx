@@ -720,34 +720,6 @@ export const CartView: React.FC<CartViewProps> = ({
           </div>
         )}
 
-        {/* 3. CONFIRMED DELIVERY ADDRESS (Simple, clean 1-line design without box/messy styling) */}
-        <div className="mb-5 pb-3 border-b border-slate-200/80 flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800">
-                Delivery
-              </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                <Check className="w-3 h-3 stroke-[2.5]" />
-                <span>Confirmed</span>
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-700 font-medium truncate flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="truncate">{confirmedAddressOneLine}</span>
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenLocationModal}
-            className="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline shrink-0 pt-0.5 px-1 cursor-pointer transition-colors"
-            title="Change delivery address"
-          >
-            Change
-          </button>
-        </div>
-
         {/* 3.1 OUT OF STOCK INVENTORY NOTICE (Shown if any estimated/custom item is out of stock) */}
         {items.some(
           (i) => i.product.inStock === false || (i.product.stockCount !== undefined && i.product.stockCount <= 0)

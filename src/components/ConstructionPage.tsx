@@ -18,7 +18,8 @@ import {
   ShieldCheck,
   Truck,
   Sparkles,
-  ArrowUpDown
+  ArrowUpDown,
+  Zap
 } from 'lucide-react';
 import { Product } from '../types';
 import { supabase } from '../lib/supabaseClient';
@@ -679,55 +680,65 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
               </div>
 
               {/* Trust Indicators */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 max-w-xl mx-auto text-left">
-                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
-                  <Truck className="w-5 h-5 text-amber-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">Direct Site Trucks</div>
-                    <div className="text-[10px] text-slate-500">Unloaded at site</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-2 max-w-xl mx-auto text-left w-full">
+                <div className="p-3 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-[0_4px_12px_-2px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
+                    <Truck className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">Direct Site Trucks</div>
+                    <div className="text-[10px] text-slate-500 truncate">Unloaded at site</div>
                   </div>
                 </div>
-                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">100% Genuine</div>
-                    <div className="text-[10px] text-slate-500">Manufacturer seals</div>
+                <div className="p-3 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-[0_4px_12px_-2px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">100% Genuine</div>
+                    <div className="text-[10px] text-slate-500 truncate">Manufacturer seals</div>
                   </div>
                 </div>
-                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
-                  <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">GST Invoices</div>
-                    <div className="text-[10px] text-slate-500">Official project bills</div>
+                <div className="p-3 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-[0_4px_12px_-2px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 truncate">GST Invoices</div>
+                    <div className="text-[10px] text-slate-500 truncate">Official project bills</div>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons for Direct Inquiry */}
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+              {/* Action Buttons for Direct Inquiry - Equal Size & Liquid Glossy Design */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl mx-auto pt-3">
+                {/* 1. WhatsApp Liquid Gloss Button */}
                 <a
                   href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20need%20a%20wholesale%20quote%20for%20construction%20materials."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                  className="relative group overflow-hidden w-full h-12 min-h-[48px] px-3.5 rounded-2xl bg-gradient-to-b from-emerald-500 via-emerald-600 to-emerald-700 text-white font-bold text-xs sm:text-[13px] tracking-tight shadow-[0_8px_20px_-4px_rgba(16,185,129,0.38),inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_-2px_4px_rgba(0,0,0,0.18)] border border-emerald-400/40 hover:from-emerald-400 hover:to-emerald-600 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/35 before:to-transparent before:pointer-events-none before:rounded-t-2xl"
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Request Instant WhatsApp Quote</span>
+                  <MessageSquare className="w-4 h-4 shrink-0 drop-shadow-xs" />
+                  <span className="truncate">WhatsApp Quote</span>
                 </a>
 
+                {/* 2. Call Contractor Liquid Gloss Button */}
                 <a
                   href="tel:+918777400280"
-                  className="px-5 py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                  className="relative group overflow-hidden w-full h-12 min-h-[48px] px-3.5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-bold text-xs sm:text-[13px] tracking-tight shadow-[0_8px_20px_-4px_rgba(245,158,11,0.35),inset_0_1px_1px_rgba(255,255,255,0.75),inset_0_-2px_4px_rgba(0,0,0,0.12)] border border-amber-300/60 hover:from-amber-300 hover:to-amber-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/40 before:to-transparent before:pointer-events-none before:rounded-t-2xl"
                 >
-                  <PhoneCall className="w-3.5 h-3.5" />
-                  <span>Call Contractor Desk</span>
+                  <PhoneCall className="w-4 h-4 shrink-0 drop-shadow-xs" />
+                  <span className="truncate">Call Contractor</span>
                 </a>
 
+                {/* 3. Browse Electrical Store Liquid Gloss Button */}
                 <Link
                   to="/electrical"
-                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer"
+                  className="relative group overflow-hidden w-full h-12 min-h-[48px] px-3.5 rounded-2xl bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 text-white font-bold text-xs sm:text-[13px] tracking-tight shadow-[0_8px_20px_-4px_rgba(15,23,42,0.38),inset_0_1px_1px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.25)] border border-slate-700/60 hover:from-slate-700 hover:to-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/20 before:to-transparent before:pointer-events-none before:rounded-t-2xl"
                 >
-                  <span>Browse Electrical Store</span>
+                  <Zap className="w-4 h-4 shrink-0 text-amber-400 drop-shadow-xs" />
+                  <span className="truncate">Electrical Store</span>
                 </Link>
               </div>
 
@@ -735,7 +746,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
           </div>
         ) : paginatedProducts.length === 0 ? (
           /* When backend has products, but current filters/search return 0 */
-          <div className="py-20 text-center space-y-4 max-w-md mx-auto">
+          <div className="py-20 text-center space-y-4 max-w-md mx-auto px-4">
             <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
@@ -750,23 +761,23 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-sm mx-auto pt-3">
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => navigate(`/electrical?q=${encodeURIComponent(searchQuery)}`)}
-                  className="px-4 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-xs transition-all flex items-center gap-1.5"
+                  className="relative group overflow-hidden w-full h-11 min-h-[44px] px-3.5 rounded-2xl bg-gradient-to-b from-amber-400 via-amber-500 to-amber-600 text-slate-950 font-bold text-xs shadow-[0_6px_16px_-3px_rgba(245,158,11,0.35),inset_0_1px_1px_rgba(255,255,255,0.7)] border border-amber-300/60 hover:from-amber-300 hover:to-amber-500 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/40 before:to-transparent before:pointer-events-none before:rounded-t-2xl"
                 >
-                  <span>Search &ldquo;{searchQuery}&rdquo; in Electrical Store</span>
-                  <span>&rarr;</span>
+                  <span className="truncate">Search Electrical</span>
+                  <Zap className="w-3.5 h-3.5 shrink-0" />
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleClearAllFilters}
-                className="px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer shadow-2xs transition-all"
+                className="relative group overflow-hidden w-full h-11 min-h-[44px] px-3.5 rounded-2xl bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 text-white font-bold text-xs shadow-[0_6px_16px_-3px_rgba(15,23,42,0.35),inset_0_1px_1px_rgba(255,255,255,0.3)] border border-slate-700/60 hover:from-slate-700 hover:to-slate-900 active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/20 before:to-transparent before:pointer-events-none before:rounded-t-2xl"
               >
-                Reset Filters
+                Reset All Filters
               </button>
             </div>
           </div>

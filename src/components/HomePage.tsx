@@ -19,7 +19,8 @@ import {
   ShoppingCart,
   Info,
   Package,
-  Wrench
+  Wrench,
+  Lock
 } from 'lucide-react';
 import { Product, CartItem } from '../types';
 import { supabase } from '../lib/supabaseClient';

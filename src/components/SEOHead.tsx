@@ -29,26 +29,30 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
   useEffect(() => {
     // 1. Dynamic Page Titles
-    const baseTitle = 'BuildNow | Kolkata Electrical, Electronics & Construction Supplies';
+    const baseTitle = 'Giriraj Power | Kolkata Electrical Goods & Construction Supplies';
     let computedTitle = title || baseTitle;
 
     if (!title) {
       if (location.pathname === '/') {
-        computedTitle = 'BuildNow | Buy Electrical, Electronics, Construction & Wiring Services Kolkata';
+        computedTitle = 'Giriraj Power | Buy Electrical Goods, Construction Materials & Wiring Services Kolkata';
       } else if (location.pathname.startsWith('/electrical')) {
-        computedTitle = 'Buy Electrical Goods & Wiring Materials Online Kolkata | BuildNow (60 Min Delivery)';
+        computedTitle = 'Buy Electrical Goods & House Wiring Cables Online Kolkata | Giriraj Power';
       } else if (location.pathname.startsWith('/construction')) {
-        computedTitle = 'Order Cement, TMT Steel & Construction Materials Online Kolkata | BuildNow';
+        computedTitle = 'Order Cement, TMT Steel & Construction Materials Online Kolkata | Giriraj Power';
       } else if (location.pathname.startsWith('/services')) {
-        computedTitle = 'Certified House Wiring & Real Estate Electrification Contractors Kolkata | BuildNow';
-      } else if (location.pathname.startsWith('/terms/shipping')) {
-        computedTitle = 'Shipping & Delivery Policy | BuildNow Kolkata';
-      } else if (location.pathname.startsWith('/terms/returns')) {
-        computedTitle = 'Refund & Return Policy (7-Day Condition) | BuildNow';
-      } else if (location.pathname.startsWith('/terms/privacy')) {
-        computedTitle = 'Privacy Policy | BuildNow';
-      } else if (location.pathname.startsWith('/terms/service')) {
-        computedTitle = 'Terms of Service | BuildNow';
+        computedTitle = 'Certified House Wiring & Real Estate Electrification Contractors Kolkata | Giriraj Power';
+      } else if (location.pathname === '/privacy' || location.pathname === '/privacy-policy') {
+        computedTitle = 'Privacy Policy | Giriraj Power';
+      } else if (location.pathname === '/terms' || location.pathname === '/terms-of-service') {
+        computedTitle = 'Terms of Service | Giriraj Power';
+      } else if (location.pathname === '/refund-policy' || location.pathname === '/refunds') {
+        computedTitle = 'Refund & Cancellation Policy | Giriraj Power';
+      } else if (location.pathname === '/shipping-policy' || location.pathname === '/shipping') {
+        computedTitle = 'Shipping & Delivery Policy | Giriraj Power';
+      } else if (location.pathname === '/about' || location.pathname === '/about-us') {
+        computedTitle = 'About Us | Giriraj Power Kolkata';
+      } else if (location.pathname === '/faqs' || location.pathname === '/faq') {
+        computedTitle = 'Frequently Asked Questions (FAQ) | Giriraj Power';
       }
     }
 
@@ -56,7 +60,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
     // 2. Dynamic Meta Description
     const defaultDesc =
-      'BuildNow HomeRun Depot: Kolkata’s trusted supplier for electrical goods, modular switches, Polycab & Havells wires, electronics, UltraTech cement, Tata Tiscon TMT bars, and certified house & real estate wiring contractors with 60-minute express delivery.';
+      'Giriraj Power: Kolkata’s trusted supplier for electrical goods, modular switches, Polycab & Havells wires, electronics, UltraTech cement, Tata Tiscon TMT bars, and certified house & real estate wiring contractors with 60-minute express delivery.';
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
       metaDesc.setAttribute('content', description || defaultDesc);
@@ -64,7 +68,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
     // 3. Dynamic Meta Keywords
     const defaultKeywords =
-      'buildnow, build now, homerun, home run, buildnow construction, homerun electrical, buildnow kolkata, electrical shop near me, buy electrical goods online Kolkata, electronics hardware store, house wiring contractor, electrical wiring services, modular switches, Polycab wire, Havells cables, Finolex wire, Schneider MCB, distribution board, LED lighting, construction materials Kolkata, cement delivery, UltraTech cement, ACC cement, TMT steel bars, Tata Tiscon rebars, waterproofing chemicals, real estate electrification, licensed electrician Kolkata, Kasba electrical shop, wholesale electrical market Kolkata, B2B building materials procurement, direct depot Kolkata';
+      'Giriraj Power, giriraj power kolkata, giriraj electricals, electrical shop near me, buy electrical goods online Kolkata, house wiring contractor, electrical wiring services, modular switches, Polycab wire, Havells cables, Finolex wire, Schneider MCB, distribution board, LED lighting, construction materials Kolkata, cement delivery, UltraTech cement, ACC cement, TMT steel bars, Tata Tiscon rebars, waterproofing chemicals, real estate electrification, licensed electrician Kolkata, Kasba electrical shop, wholesale electrical market Kolkata, B2B building materials procurement, direct depot Kolkata';
     const metaKey = document.querySelector('meta[name="keywords"]');
     if (metaKey) {
       metaKey.setAttribute('content', keywords || defaultKeywords);
@@ -97,10 +101,10 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
         '@type': 'Product',
         name: productData.name,
         image: productData.image || 'https://i.imgur.com/tGG9UN0.png',
-        description: productData.description || `${productData.name} available at BuildNow Kolkata with express delivery.`,
+        description: productData.description || `${productData.name} available at Giriraj Power Kolkata with express delivery.`,
         brand: {
           '@type': 'Brand',
-          name: productData.brand || 'BuildNow'
+          name: productData.brand || 'Giriraj Power'
         },
         offers: {
           '@type': 'Offer',
@@ -111,7 +115,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
           itemCondition: 'https://schema.org/NewCondition',
           seller: {
             '@type': 'Organization',
-            name: 'BuildNow'
+            name: 'Giriraj Power'
           }
         },
         aggregateRating: {

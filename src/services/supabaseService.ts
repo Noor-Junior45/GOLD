@@ -3,6 +3,174 @@ import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
+import { showToast } from '../utils/toast';
+
+// Offline Sync Queue Types & Constants
+export interface PendingSyncItem {
+  id: string;
+  type: 'profile' | 'address' | 'delete_address' | 'upi' | 'delete_upi' | 'service_booking' | 'order';
+  payload: any;
+  userScope?: string;
+  timestamp: number;
+}
+
+const PENDING_SYNC_STORAGE_KEY = 'giriraj_pending_sync_queue_v1';
+
+export function getPendingSyncQueue(): PendingSyncItem[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePendingSyncQueue(queue: PendingSyncItem[]): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.setItem(PENDING_SYNC_STORAGE_KEY, JSON.stringify(queue));
+  } catch (err) {
+    console.warn('Error saving sync queue:', err);
+  }
+}
+
+export function enqueuePendingSync(item: Omit<PendingSyncItem, 'id' | 'timestamp'>): void {
+  const queue = getPendingSyncQueue();
+  const newItem: PendingSyncItem = {
+    ...item,
+    id: `sync_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    timestamp: Date.now()
+  };
+  // Avoid duplicate queue entries for the same entity
+  const filtered = queue.filter(
+    (q) => !(q.type === newItem.type && JSON.stringify(q.payload?.id || q.payload?.user_id) === JSON.stringify(newItem.payload?.id || newItem.payload?.user_id))
+  );
+  filtered.push(newItem);
+  savePendingSyncQueue(filtered);
+}
+
+/**
+ * Retries and drains any pending sync items when connection is re-established
+ */
+export async function retryPendingSync(): Promise<number> {
+  const queue = getPendingSyncQueue();
+  if (queue.length === 0) return 0;
+
+  const remaining: PendingSyncItem[] = [];
+  let syncedCount = 0;
+
+  for (const item of queue) {
+    try {
+      if (item.type === 'profile') {
+        const { user_id, ...profileData } = item.payload;
+        const res = await syncUserProfileToSupabase(user_id, profileData);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      } else if (item.type === 'address') {
+        const res = await syncAddressDirect(item.payload);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      } else if (item.type === 'delete_address') {
+        const res = await syncDeleteAddressDirect(item.payload.id, item.payload.userId);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      } else if (item.type === 'service_booking') {
+        const res = await syncServiceBookingDirect(item.payload);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      } else if (item.type === 'upi') {
+        const res = await syncUpiDirect(item.payload.upiId, item.payload.userId);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      } else if (item.type === 'delete_upi') {
+        const res = await syncDeleteUpiDirect(item.payload.upiId, item.payload.userId);
+        if (!res.success) remaining.push(item);
+        else syncedCount++;
+      }
+    } catch {
+      remaining.push(item);
+    }
+  }
+
+  savePendingSyncQueue(remaining);
+
+  if (syncedCount > 0) {
+    showToast(`Online: ${syncedCount} local change${syncedCount > 1 ? 's' : ''} synced to cloud.`, 'success');
+  }
+
+  return syncedCount;
+}
+
+// Auto-bind online event listener
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    retryPendingSync().catch(() => {});
+  });
+  // Trigger on load
+  setTimeout(() => {
+    retryPendingSync().catch(() => {});
+  }, 3000);
+}
+
+// Helper direct sync functions used by retry engine
+async function syncAddressDirect(rowPayload: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.from('saved_addresses').upsert(rowPayload, { onConflict: 'id' });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+async function syncDeleteAddressDirect(id: string, userId?: string | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    let query = supabase.from('saved_addresses').delete().eq('id', id);
+    if (userId) query = query.eq('user_id', userId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+async function syncServiceBookingDirect(bookingPayload: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.from('wiring_service_bookings').insert(bookingPayload);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+async function syncUpiDirect(upiId: string, userId?: string | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.from('saved_upi_ids').upsert({
+      upi_id: upiId,
+      user_id: userId || null,
+      created_at: new Date().toISOString()
+    }, { onConflict: 'upi_id,user_id' });
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
+
+async function syncDeleteUpiDirect(upiId: string, userId?: string | null): Promise<{ success: boolean; error?: string }> {
+  try {
+    let query = supabase.from('saved_upi_ids').delete().eq('upi_id', upiId);
+    if (userId) query = query.eq('user_id', userId);
+    const { error } = await query;
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || String(err) };
+  }
+}
 
 // Local storage key constants
 export const USER_PHONE_KEY = 'giriraj_user_phone';
@@ -412,32 +580,89 @@ export function onAuthStateChange(
 }
 
 /**
- * Syncs user profile data into Supabase `user_profiles` table with RLS
+ * Syncs user profile data into Supabase `user_profiles` table with RLS and server-side backup
  */
 export async function syncUserProfileToSupabase(
   userId: string,
-  profile: { phone?: string; full_name?: string; email?: string; avatar_url?: string }
-): Promise<void> {
-  try {
-    const payload = {
-      user_id: userId,
-      phone: profile.phone || null,
-      full_name: profile.full_name || null,
-      email: profile.email || null,
-      avatar_url: profile.avatar_url || null,
-      updated_at: new Date().toISOString()
-    };
+  profile: { phone?: string; full_name?: string; email?: string; avatar_url?: string; dob?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const payload = {
+    user_id: userId,
+    phone: profile.phone || null,
+    full_name: profile.full_name || null,
+    email: profile.email || null,
+    avatar_url: profile.avatar_url || null,
+    dob: profile.dob || null,
+    updated_at: new Date().toISOString()
+  };
 
+  // 1. Also sync to server API backup
+  try {
+    fetch('/api/user-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch {}
+
+  // 2. Direct Supabase Upsert
+  try {
     const { error } = await supabase
       .from('user_profiles')
       .upsert(payload, { onConflict: 'user_id' });
 
     if (error) {
-      console.warn('user_profiles upsert note:', error.message);
+      console.warn('user_profiles upsert notice:', error.message);
+      enqueuePendingSync({
+        type: 'profile',
+        payload
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.warn('Profile sync error:', msg);
+    enqueuePendingSync({
+      type: 'profile',
+      payload
+    });
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Fetch profile directly from Supabase `user_profiles` table
+ */
+export async function fetchUserProfileFromSupabase(userId: string): Promise<UserProfile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const mappedProfile: UserProfile = {
+        name: data.full_name || 'Customer',
+        phone: data.phone || '',
+        email: data.email || '',
+        emailVerified: true,
+        photoURL: data.avatar_url || undefined,
+        dob: data.dob || undefined,
+        walletBalance: Number(data.wallet_balance || 0),
+        refundBalance: Number(data.refund_balance || 0),
+        cashbackBalance: Number(data.cashback_balance || 0)
+      };
+
+      const scope = `uid_${userId}`;
+      safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(mappedProfile));
+      return mappedProfile;
     }
   } catch (err) {
-    console.warn('Profile sync error:', err);
+    console.warn('Error fetching profile from Supabase:', err);
   }
+  return null;
 }
 
 /**
@@ -466,9 +691,9 @@ export function getSavedUserProfile(userScopeOverride?: string): UserProfile | n
 }
 
 /**
- * Save user profile updates to local state and Supabase
+ * Save user profile updates to local state (offline-first) and Supabase
  */
-export function saveUserProfile(
+export async function saveUserProfile(
   data: {
     phone?: string;
     name?: string;
@@ -480,55 +705,72 @@ export function saveUserProfile(
     cashbackBalance?: number;
   },
   userScopeOverride?: string
-): void {
+): Promise<{ success: boolean; profile: UserProfile; error?: string }> {
   const scope =
     userScopeOverride ||
     activeUserScope ||
     (data.email ? getUserScopeKeyFromUser({ email: data.email }) : null) ||
     (data.phone ? getUserScopeKeyFromUser({ phone: data.phone }) : null);
 
+  const existing = (scope ? getSavedUserProfile(scope) : null) || {
+    name: 'Customer',
+    phone: '',
+    email: '',
+    emailVerified: false,
+    walletBalance: 0,
+    refundBalance: 0,
+    cashbackBalance: 0
+  };
+
+  const effectiveEmail = data.email !== undefined ? data.email : existing.email;
+
+  const updated: UserProfile = {
+    ...existing,
+    phone: data.phone !== undefined ? data.phone : existing.phone,
+    name: data.name !== undefined ? data.name : existing.name,
+    email: effectiveEmail,
+    emailVerified: data.emailVerified !== undefined ? data.emailVerified : existing.emailVerified,
+    photoURL: data.photoURL !== undefined ? data.photoURL : existing.photoURL,
+    dob: data.dob !== undefined ? data.dob : existing.dob,
+    refundBalance: data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance,
+    cashbackBalance: data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance,
+    walletBalance:
+      (data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance || 0) +
+      (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0)
+  };
+
   if (scope) {
-    const existing = getSavedUserProfile(scope) || {
-      name: 'Customer',
-      phone: '',
-      email: '',
-      emailVerified: false,
-      walletBalance: 0,
-      refundBalance: 0,
-      cashbackBalance: 0
-    };
-
-    const effectiveEmail = data.email !== undefined ? data.email : existing.email;
-
-    const updated: UserProfile = {
-      ...existing,
-      phone: data.phone !== undefined ? data.phone : existing.phone,
-      name: data.name !== undefined ? data.name : existing.name,
-      email: effectiveEmail,
-      emailVerified: data.emailVerified !== undefined ? data.emailVerified : existing.emailVerified,
-      photoURL: data.photoURL !== undefined ? data.photoURL : existing.photoURL,
-      dob: data.dob !== undefined ? data.dob : existing.dob,
-      refundBalance: data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance,
-      cashbackBalance: data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance,
-      walletBalance:
-        (data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance || 0) +
-        (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0)
-    };
-
     safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(updated));
   }
 
-  // Async sync to Supabase if authenticated
-  supabase.auth.getUser().then(({ data: authData }) => {
+  // Also save to generic backup if scope wasn't set yet
+  if (data.phone) {
+    const phoneScope = `phone_${data.phone.replace(/\D/g, '')}`;
+    safeSetItem(`giriraj_profile_${phoneScope}`, JSON.stringify(updated));
+  }
+  if (data.email) {
+    const emailScope = `email_${data.email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    safeSetItem(`giriraj_profile_${emailScope}`, JSON.stringify(updated));
+  }
+
+  // Synchronize to Supabase & Backend API
+  try {
+    const { data: authData } = await supabase.auth.getUser();
     if (authData?.user?.id) {
-      syncUserProfileToSupabase(authData.user.id, {
+      const syncResult = await syncUserProfileToSupabase(authData.user.id, {
         phone: data.phone,
         full_name: data.name,
         email: data.email,
-        avatar_url: data.photoURL
-      }).catch(() => {});
+        avatar_url: data.photoURL,
+        dob: data.dob
+      });
+      return { success: syncResult.success, profile: updated, error: syncResult.error };
     }
-  });
+  } catch (err: any) {
+    return { success: true, profile: updated };
+  }
+
+  return { success: true, profile: updated };
 }
 
 export function clearUserProfile(): void {
@@ -1274,36 +1516,63 @@ export async function clearAllUserOrders(): Promise<boolean> {
 }
 
 /**
- * Service Booking in Supabase
+ * Service Booking in Supabase & Server API Backup
  */
-export async function createFirestoreServiceBooking(booking: WiringServiceBooking): Promise<void> {
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id || null;
+export async function createFirestoreServiceBooking(booking: WiringServiceBooking): Promise<{ success: boolean; error?: string }> {
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
 
-    await supabase.from('wiring_service_bookings').insert({
-      id: booking.id,
-      user_id: userId,
-      service_title: booking.serviceTitle,
-      service_category: booking.serviceCategory,
-      project_type: booking.projectType,
-      approx_area_sq_ft: booking.approxAreaSqFt,
-      preferred_date: booking.preferredDate,
-      preferred_time_slot: booking.preferredTimeSlot,
-      site_address: booking.siteAddress,
-      area: booking.area,
-      pincode: booking.pincode,
-      contact_name: booking.contactName,
-      contact_phone: booking.contactPhone,
-      contact_email: booking.contactEmail || null,
-      estimated_price: booking.estimatedPrice,
-      wire_grade: booking.wireGrade,
-      notes: booking.notes || null,
-      status: booking.status,
-      created_at: booking.createdAt
+  const payload = {
+    id: booking.id,
+    user_id: userId,
+    service_title: booking.serviceTitle,
+    service_category: booking.serviceCategory,
+    project_type: booking.projectType,
+    approx_area_sq_ft: booking.approxAreaSqFt,
+    preferred_date: booking.preferredDate,
+    preferred_time_slot: booking.preferredTimeSlot,
+    site_address: booking.siteAddress,
+    area: booking.area,
+    pincode: booking.pincode,
+    contact_name: booking.contactName,
+    contact_phone: booking.contactPhone,
+    contact_email: booking.contactEmail || null,
+    estimated_price: booking.estimatedPrice,
+    wire_grade: booking.wireGrade,
+    notes: booking.notes || null,
+    status: booking.status,
+    created_at: booking.createdAt
+  };
+
+  // 1. Server API backup call
+  try {
+    fetch('/api/service-bookings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch {}
+
+  // 2. Direct Supabase insert
+  try {
+    const { error } = await supabase.from('wiring_service_bookings').insert(payload);
+    if (error) {
+      console.warn('wiring_service_bookings insert notice:', error.message);
+      enqueuePendingSync({
+        type: 'service_booking',
+        payload
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error: any) {
+    const msg = error?.message || String(error);
+    console.warn('Supabase service booking error:', msg);
+    enqueuePendingSync({
+      type: 'service_booking',
+      payload
     });
-  } catch (error) {
-    console.warn('Supabase service booking error:', error);
+    return { success: false, error: msg };
   }
 }
 
@@ -1476,7 +1745,7 @@ export function subscribeToAddresses(listener: AddressListener): () => void {
   };
 }
 
-export async function saveAddressToFirestore(address: SavedAddress): Promise<void> {
+export async function saveAddressToFirestore(address: SavedAddress): Promise<{ success: boolean; error?: string }> {
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
@@ -1492,35 +1761,61 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<voi
   safeSetItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(address));
   notifyAddressListeners(updated);
 
-  try {
-    const rowPayload = {
-      id: address.id,
-      user_id: userId,
-      tag: address.tag,
-      tag_label: address.tagLabel || null,
-      house_name: address.houseName,
-      house_flat: address.houseFlat,
-      building_road: address.buildingRoad,
-      landmark: address.landmark || null,
-      area_name: address.area?.name || 'Kolkata',
-      pincode: address.area?.pincode || '700001',
-      area_data: address.area,
-      lat: address.lat || null,
-      lng: address.lng || null,
-      formatted_exact_address: address.formattedExactAddress || null,
-      receiver_name: address.receiverName || null,
-      receiver_phone: address.receiverPhone || null,
-      created_at: address.createdAt || new Date().toISOString()
-    };
+  const rowPayload = {
+    id: address.id,
+    user_id: userId,
+    tag: address.tag,
+    tag_label: address.tagLabel || null,
+    house_name: address.houseName,
+    house_flat: address.houseFlat,
+    building_road: address.buildingRoad,
+    landmark: address.landmark || null,
+    area_name: address.area?.name || 'Kolkata',
+    pincode: address.area?.pincode || '700001',
+    area_data: address.area,
+    lat: address.lat || null,
+    lng: address.lng || null,
+    formatted_exact_address: address.formattedExactAddress || null,
+    receiver_name: address.receiverName || null,
+    receiver_phone: address.receiverPhone || null,
+    created_at: address.createdAt || new Date().toISOString()
+  };
 
-    await supabase.from('saved_addresses').upsert(rowPayload, { onConflict: 'id' });
-  } catch (err) {
-    console.warn('Supabase save address error:', err);
+  // 1. Server API backup
+  try {
+    fetch('/api/saved-addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rowPayload)
+    }).catch(() => {});
+  } catch {}
+
+  // 2. Direct Supabase Upsert
+  try {
+    const { error } = await supabase.from('saved_addresses').upsert(rowPayload, { onConflict: 'id' });
+    if (error) {
+      console.warn('Supabase save address notice:', error.message);
+      enqueuePendingSync({
+        type: 'address',
+        payload: rowPayload
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.warn('Supabase save address error:', msg);
+    enqueuePendingSync({
+      type: 'address',
+      payload: rowPayload
+    });
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteAddressFromFirestore(id: string): Promise<void> {
+export async function deleteAddressFromFirestore(id: string): Promise<{ success: boolean; error?: string }> {
   const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
   const current = getStoredAddresses(scope || undefined);
@@ -1547,13 +1842,27 @@ export async function deleteAddressFromFirestore(id: string): Promise<void> {
   notifyAddressListeners(updated);
 
   try {
-    if (authData?.user?.id) {
-      await supabase.from('saved_addresses').delete().eq('id', id).eq('user_id', authData.user.id);
-    } else {
-      await supabase.from('saved_addresses').delete().eq('id', id);
+    let query = supabase.from('saved_addresses').delete().eq('id', id);
+    if (userId) {
+      query = query.eq('user_id', userId);
     }
-  } catch (err) {
-    console.warn('Supabase delete address error:', err);
+    const { error } = await query;
+    if (error) {
+      enqueuePendingSync({
+        type: 'delete_address',
+        payload: { id, userId }
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.warn('Supabase delete address error:', msg);
+    enqueuePendingSync({
+      type: 'delete_address',
+      payload: { id, userId }
+    });
+    return { success: false, error: msg };
   }
 }
 
@@ -1625,9 +1934,9 @@ export function subscribeToUpiIds(listener: UpiListener): () => void {
   };
 }
 
-export async function saveUpiToFirestore(upiId: string): Promise<void> {
+export async function saveUpiToFirestore(upiId: string): Promise<{ success: boolean; error?: string }> {
   const cleanUpi = upiId.trim().toLowerCase();
-  if (!cleanUpi) return;
+  if (!cleanUpi) return { success: false, error: 'Empty UPI ID' };
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
@@ -1640,19 +1949,35 @@ export async function saveUpiToFirestore(upiId: string): Promise<void> {
   }
 
   try {
-    await supabase.from('saved_upi_ids').upsert({
+    const { error } = await supabase.from('saved_upi_ids').upsert({
       upi_id: cleanUpi,
       user_id: userId,
       created_at: new Date().toISOString()
     }, { onConflict: 'upi_id,user_id' });
-  } catch (err) {
-    console.warn('Supabase save upi error:', err);
+
+    if (error) {
+      enqueuePendingSync({
+        type: 'upi',
+        payload: { upiId: cleanUpi, userId }
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.warn('Supabase save upi error:', msg);
+    enqueuePendingSync({
+      type: 'upi',
+      payload: { upiId: cleanUpi, userId }
+    });
+    return { success: false, error: msg };
   }
 }
 
-export async function deleteUpiFromFirestore(upiId: string): Promise<void> {
+export async function deleteUpiFromFirestore(upiId: string): Promise<{ success: boolean; error?: string }> {
   const cleanUpi = upiId.trim().toLowerCase();
   const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
   if (scope) {
@@ -1663,13 +1988,27 @@ export async function deleteUpiFromFirestore(upiId: string): Promise<void> {
   }
 
   try {
-    if (authData?.user?.id) {
-      await supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi).eq('user_id', authData.user.id);
-    } else {
-      await supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi);
+    let query = supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi);
+    if (userId) {
+      query = query.eq('user_id', userId);
     }
-  } catch (err) {
-    console.warn('Supabase delete upi error:', err);
+    const { error } = await query;
+    if (error) {
+      enqueuePendingSync({
+        type: 'delete_upi',
+        payload: { upiId: cleanUpi, userId }
+      });
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.warn('Supabase delete upi error:', msg);
+    enqueuePendingSync({
+      type: 'delete_upi',
+      payload: { upiId: cleanUpi, userId }
+    });
+    return { success: false, error: msg };
   }
 }
 

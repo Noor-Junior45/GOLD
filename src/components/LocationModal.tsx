@@ -30,6 +30,7 @@ import {
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY
 } from '../services/supabaseService';
+import { showToast } from '../utils/toast';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -535,7 +536,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Delete saved address
   const handleDeleteAddress = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await deleteAddressFromFirestore(id);
+    try {
+      await deleteAddressFromFirestore(id);
+      showToast('Address removed', 'info');
+    } catch {
+      showToast('Address removed locally', 'info');
+    }
   };
 
   // Save address form
@@ -569,7 +575,16 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       createdAt: new Date().toISOString()
     };
 
-    await saveAddressToFirestore(newAddress);
+    try {
+      const res = await saveAddressToFirestore(newAddress);
+      if (res.success) {
+        showToast('Address saved and synced successfully!', 'success');
+      } else {
+        showToast('Address saved locally. Cloud sync queued.', 'info');
+      }
+    } catch {
+      showToast('Address saved locally.', 'info');
+    }
 
     try {
       localStorage.setItem('giriraj_active_address', `${newAddress.houseFlat}, ${newAddress.houseName}`);

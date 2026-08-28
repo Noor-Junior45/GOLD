@@ -1440,6 +1440,119 @@ async function startServer() {
     }
   });
 
+  // User Profile Server-Side Sync API
+  app.post("/api/user-profile", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const { user_id, phone, full_name, email, avatar_url, dob } = req.body || {};
+      if (!user_id && !phone && !email) {
+        return res.status(400).json({ success: false, message: "Missing identifier" });
+      }
+      const sb = getServerSupabase();
+      if (sb && user_id) {
+        try {
+          await sb.from("user_profiles").upsert({
+            user_id,
+            phone: phone || null,
+            full_name: full_name || null,
+            email: email || null,
+            avatar_url: avatar_url || null,
+            dob: dob || null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: "user_id" });
+        } catch (sbErr) {
+          console.warn("[Server Profile Sync Notice]:", sbErr);
+        }
+      }
+      return res.status(200).json({ success: true, message: "Profile synchronized" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to sync profile" });
+    }
+  });
+
+  // Saved Addresses Server-Side Sync API
+  app.post("/api/saved-addresses", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const address = req.body || {};
+      if (!address.id) {
+        return res.status(400).json({ success: false, message: "Missing address id" });
+      }
+      const sb = getServerSupabase();
+      if (sb) {
+        try {
+          await sb.from("saved_addresses").upsert({
+            id: address.id,
+            user_id: address.user_id || address.userId || null,
+            tag: address.tag || "home",
+            tag_label: address.tag_label || address.tagLabel || null,
+            house_name: address.house_name || address.houseName || "",
+            house_flat: address.house_flat || address.houseFlat || "",
+            building_road: address.building_road || address.buildingRoad || "",
+            landmark: address.landmark || null,
+            area_name: address.area_name || address.area?.name || "Kolkata",
+            pincode: address.pincode || address.area?.pincode || "700001",
+            area_data: address.area_data || address.area || null,
+            lat: address.lat || null,
+            lng: address.lng || null,
+            formatted_exact_address: address.formatted_exact_address || address.formattedExactAddress || null,
+            receiver_name: address.receiver_name || address.receiverName || null,
+            receiver_phone: address.receiver_phone || address.receiverPhone || null,
+            created_at: address.created_at || address.createdAt || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: "id" });
+        } catch (sbErr) {
+          console.warn("[Server Address Sync Notice]:", sbErr);
+        }
+      }
+      return res.status(200).json({ success: true, message: "Address synchronized" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to sync address" });
+    }
+  });
+
+  // Wiring Service Bookings Server-Side Sync API
+  app.post("/api/service-bookings", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const booking = req.body || {};
+      if (!booking.id || !booking.serviceTitle) {
+        return res.status(400).json({ success: false, message: "Missing booking details" });
+      }
+      const sb = getServerSupabase();
+      if (sb) {
+        try {
+          await sb.from("wiring_service_bookings").insert({
+            id: booking.id,
+            user_id: booking.userId || booking.user_id || null,
+            service_title: booking.serviceTitle || booking.service_title,
+            service_category: booking.serviceCategory || booking.service_category || "General",
+            project_type: booking.projectType || booking.project_type || null,
+            approx_area_sq_ft: booking.approxAreaSqFt || booking.approx_area_sq_ft || null,
+            preferred_date: booking.preferredDate || booking.preferred_date || null,
+            preferred_time_slot: booking.preferredTimeSlot || booking.preferred_time_slot || null,
+            site_address: booking.siteAddress || booking.site_address || null,
+            area: booking.area || null,
+            pincode: booking.pincode || null,
+            contact_name: booking.contactName || booking.contact_name || "Customer",
+            contact_phone: booking.contactPhone || booking.contact_phone || "",
+            contact_email: booking.contactEmail || booking.contact_email || null,
+            estimated_price: booking.estimatedPrice || booking.estimated_price || 0,
+            wire_grade: booking.wireGrade || booking.wire_grade || null,
+            notes: booking.notes || null,
+            status: booking.status || "pending",
+            created_at: booking.createdAt || booking.created_at || new Date().toISOString()
+          });
+        } catch (sbErr) {
+          console.warn("[Server Service Booking Sync Notice]:", sbErr);
+        }
+      }
+      return res.status(200).json({ success: true, message: "Service booking recorded" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to record booking" });
+    }
+  });
+
   // Resend Email Gateway Status endpoint
   app.get("/api/email-status", (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;

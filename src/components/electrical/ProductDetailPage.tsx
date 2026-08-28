@@ -937,19 +937,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
 
-            {/* Stock Status */}
-            <div>
-              {product.stock_quantity > 0 ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-50 text-green-800 text-xs font-extrabold border border-green-200">
-                  <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse" />
-                  In Stock ({product.stock_quantity} units available in Kolkata hub)
-                </span>
-              ) : (
+            {/* Stock Status (Only show warning if Out of Stock) */}
+            {product.stock_quantity <= 0 && (
+              <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-800 text-xs font-extrabold border border-red-200">
                   Currently Out of Stock
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Specifications Table - Renders Real Supabase Attributes without dummy 'Details' label */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { KeyRound, Mail } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { saveUserProfile } from '../../services/supabaseService';
+import { showToast } from '../../utils/toast';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [editPhone, setEditPhone] = useState(userProfile?.phone || '');
   const [editDob, setEditDob] = useState(userProfile?.dob || '');
   const [editPhotoURL, setEditPhotoURL] = useState(userProfile?.photoURL || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   // OTP Verification for Email Update
   const [isOtpStep, setIsOtpStep] = useState(false);
@@ -45,6 +47,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setEditPhotoURL(userProfile?.photoURL || '');
       setIsOtpStep(false);
       setOtpError('');
+      setIsSaving(false);
     }
   }, [isOpen, userProfile]);
 
@@ -72,7 +75,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setOtpError('');
   };
 
-  const handleProfileFormSubmit = (e: React.FormEvent) => {
+  const handleProfileFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = editEmail.trim();
     const currentEmail = userProfile?.email || '';
@@ -83,6 +86,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       return;
     }
 
+    setIsSaving(true);
     // Direct save if email not changed
     const updated: UserProfile = {
       ...userProfile,
@@ -97,18 +101,31 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       walletBalance: totalWalletBalance
     };
 
-    saveUserProfile(updated);
-    onProfileUpdated(updated);
-    onClose();
+    try {
+      const res = await saveUserProfile(updated);
+      onProfileUpdated(updated);
+      if (res.success) {
+        showToast('Profile updated successfully!', 'success');
+      } else {
+        showToast('Profile saved locally. Cloud sync will retry.', 'info');
+      }
+    } catch {
+      onProfileUpdated(updated);
+      showToast('Profile saved locally.', 'info');
+    } finally {
+      setIsSaving(false);
+      onClose();
+    }
   };
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (enteredOtp.trim() !== generatedOtp) {
       setOtpError('Invalid OTP code. Please enter the 6-digit code sent to your Gmail.');
       return;
     }
 
+    setIsSaving(true);
     const updated: UserProfile = {
       ...userProfile,
       id: userProfile?.id,
@@ -123,10 +140,22 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       walletBalance: totalWalletBalance
     };
 
-    saveUserProfile(updated);
-    onProfileUpdated(updated);
-    setIsOtpStep(false);
-    onClose();
+    try {
+      const res = await saveUserProfile(updated);
+      onProfileUpdated(updated);
+      if (res.success) {
+        showToast('Profile updated and verified successfully!', 'success');
+      } else {
+        showToast('Profile saved locally. Cloud sync will retry.', 'info');
+      }
+    } catch {
+      onProfileUpdated(updated);
+      showToast('Profile saved locally.', 'info');
+    } finally {
+      setIsSaving(false);
+      setIsOtpStep(false);
+      onClose();
+    }
   };
 
   return (
