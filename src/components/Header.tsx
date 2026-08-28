@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (phone && phone.trim()) {
       return phone.replace(/\D/g, '').slice(-2);
     }
-    return 'GP';
+    return 'BN';
   };
 
   const handleCartClick = () => {

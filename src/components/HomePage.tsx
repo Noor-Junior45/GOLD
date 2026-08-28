@@ -781,25 +781,34 @@ export const HomePage: React.FC<HomePageProps> = ({
                   onClick={() => navigate(cat.targetRoute)}
                   className="w-[calc((100%-1rem)/3)] sm:w-[calc((100%-3.75rem)/6)] group flex flex-col items-center cursor-pointer select-none"
                 >
-                  {/* Soft-tinted compact rounded square image container */}
-                  <div className="w-full aspect-square bg-[#e8f1f5] hover:bg-[#dfeaf0] rounded-xl sm:rounded-2xl p-2 sm:p-2.5 relative flex items-center justify-center transition-all duration-200 border border-slate-200/60 hover:border-amber-400 shadow-2xs hover:shadow-sm hover:-translate-y-0.5 overflow-hidden">
+                  {/* Apple Liquid Glass Depth Card with Seamless Image Integration */}
+                  <div className="w-full aspect-square relative flex items-center justify-center rounded-xl sm:rounded-2xl p-1.5 sm:p-2 bg-gradient-to-b from-white/95 via-[#e6f2fb]/85 to-[#d1e8f8]/90 backdrop-blur-md border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_6px_rgba(14,116,144,0.12),0_4px_14px_rgba(14,116,144,0.12)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_6px_rgba(14,116,144,0.18),0_8px_20px_rgba(14,116,144,0.2)] transition-all duration-300 hover:-translate-y-1 overflow-hidden group-hover:border-white">
+                    {/* Apple-style Top Specular Liquid Glass Highlight */}
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/75 via-white/25 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                    {/* Bottom Glass Refraction Sheen */}
+                    <span className="pointer-events-none absolute inset-x-2 bottom-0 h-[30%] bg-gradient-to-t from-sky-400/20 via-sky-300/5 to-transparent rounded-b-xl sm:rounded-b-2xl blur-[1px]" />
+
                     {cat.badge && (
-                      <span className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 bg-[#f8d022] text-slate-950 font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-2xs z-10 select-none leading-none">
+                      <span className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5 bg-gradient-to-b from-amber-300 to-amber-400 text-slate-950 font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.12)] border border-amber-200/80 z-10 select-none leading-none">
                         {cat.badge}
                       </span>
                     )}
 
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-contain drop-shadow-2xs group-hover:scale-105 transition-transform duration-200"
-                      loading="lazy"
-                    />
+                    {/* Blended / Merged Product Image container */}
+                    <div className="w-full h-full relative z-2 flex items-center justify-center rounded-lg sm:rounded-xl overflow-hidden">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-contain mix-blend-multiply drop-shadow-[0_4px_8px_rgba(15,23,42,0.12)] group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
                   </div>
 
                   {/* Category Name below the card */}
-                  <span className="text-center font-semibold text-[11px] sm:text-xs text-slate-800 group-hover:text-amber-700 transition-colors mt-1 sm:mt-1.5 leading-tight line-clamp-2 px-0.5">
+                  <span className="text-center font-semibold text-[11px] sm:text-xs text-slate-800 group-hover:text-amber-800 group-hover:font-bold transition-colors mt-1 sm:mt-1.5 leading-tight line-clamp-2 px-0.5">
                     {cat.name}
                   </span>
                 </div>
@@ -996,96 +1005,115 @@ export const HomePage: React.FC<HomePageProps> = ({
               </p>
             </div>
 
-            {/* Compact Value Pillar Cards Grid (2 cols on mobile, 3 on desktop) */}
+            {/* Compact Value Pillar Cards Grid (2 cols on mobile, 3 on desktop) with Liquid Glass Design */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
               {/* Card 1: Genuine Branded Products */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+                
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   100% Genuine Brands
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Authorized distribution channels with valid manufacturer warranty &amp; ISI certifications.
                 </p>
               </div>
 
               {/* Card 2: Transparent Wholesale Pricing */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <TrendingUp className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   Wholesale Pricing
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Direct factory and distributor pricing with clear quotes and no middleman markups.
                 </p>
               </div>
 
               {/* Card 3: GST Invoices & Business Documentation */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <FileText className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   GST Invoices (ITC)
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Official computer-generated GST tax invoices to easily claim input tax credit.
                 </p>
               </div>
 
               {/* Card 4: Reliable Greater Kolkata Delivery */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <Truck className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   Kolkata Site Delivery
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Fast local dispatch and scheduled heavy truck logistics right to your job site.
                 </p>
               </div>
 
               {/* Card 5: Heavy Material Logistics */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <Package className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   Bulk &amp; Heavy Orders
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Full truckloads of Cement, TMT Rebars, Cables, and Plywood handled seamlessly.
                 </p>
               </div>
 
               {/* Card 6: Technical Support */}
-              <div className="group bg-white/95 backdrop-blur-xs rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-[#E2E7EE] shadow-2xs hover:shadow-xs hover:border-amber-400/80 transition-all flex flex-col justify-start space-y-1.5 sm:space-y-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center">
+              <div className="group relative overflow-hidden bg-gradient-to-b from-white/95 via-[#FDFBF7]/85 to-[#F5EEDB]/90 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 border border-white/90 shadow-[inset_0_2px_4px_rgba(255,255,255,0.95),inset_0_-2px_4px_rgba(245,158,11,0.08),0_4px_14px_rgba(15,27,45,0.06)] hover:shadow-[inset_0_2px_6px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(245,158,11,0.14),0_8px_20px_rgba(245,158,11,0.16)] transition-all duration-300 hover:-translate-y-0.5 flex flex-col justify-start space-y-1.5 sm:space-y-2">
+                {/* Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/80 via-white/30 to-transparent rounded-t-xl sm:rounded-t-2xl z-1" />
+
+                <div className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-b from-amber-100 via-amber-50 to-amber-100 text-[#FF9800] border border-amber-200/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_2px_4px_rgba(0,0,0,0.06)] flex items-center justify-center">
                   <Wrench className="w-4 h-4" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
+                <h3 className="relative z-10 text-xs sm:text-sm font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors leading-snug">
                   Project Estimation
                 </h3>
-                <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+                <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                   Expert assistance with electrical BOQ sizing, material planning, and quotes.
                 </p>
               </div>
             </div>
 
-            {/* Compact Delivery & Ownership Notice Strip */}
-            <div className="rounded-xl border border-amber-200/70 bg-white/90 p-2.5 sm:p-3 flex items-center gap-2.5">
-              <Info className="w-4 h-4 text-[#FF9800] shrink-0" />
-              <p className="text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
+            {/* Compact Delivery & Ownership Notice Strip with Liquid Glass styling */}
+            <div className="relative overflow-hidden rounded-xl border border-white/80 bg-gradient-to-r from-white/95 via-[#FDFBF7]/90 to-amber-50/80 backdrop-blur-md p-2.5 sm:p-3 flex items-center gap-2.5 shadow-[inset_0_1.5px_2px_rgba(255,255,255,0.9),0_2px_8px_rgba(245,158,11,0.08)]">
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-[50%] bg-gradient-to-b from-white/60 to-transparent z-1" />
+              <Info className="relative z-10 w-4 h-4 text-[#FF9800] shrink-0" />
+              <p className="relative z-10 text-[10px] sm:text-xs text-[#5F6B7A] leading-relaxed">
                 <span className="font-semibold text-[#0F1B2D]">Giriraj Power &amp; BuildNow</span> operate under unified ownership. Standard deliveries take 1–7 working days with express local dispatch available.
               </p>
             </div>
 
-            {/* Compact Action CTA */}
+            {/* Compact Action CTA - Apple Liquid Glass Button */}
             <div className="flex items-center justify-center pt-1">
               <button
                 onClick={() => {
@@ -1098,10 +1126,12 @@ export const HomePage: React.FC<HomePageProps> = ({
                     );
                   }
                 }}
-                className="w-full sm:w-auto px-5 py-2 rounded-xl bg-[#FFFDF9] hover:bg-amber-50 active:bg-amber-100 text-[#0F1B2D] font-bold text-xs sm:text-sm transition-all border border-amber-300/80 hover:border-amber-400 shadow-2xs cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+                className="relative overflow-hidden w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] text-slate-950 font-black font-sf-pro text-xs sm:text-sm transition-all duration-200 border border-yellow-100/80 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.85),inset_0_-2px_4px_rgba(180,83,9,0.25),0_4px_14px_rgba(245,158,11,0.32)] cursor-pointer flex items-center justify-center gap-2 active:scale-98"
               >
-                <FileText className="w-3.5 h-3.5 text-[#FF9800]" />
-                <span>Request a Project Quote</span>
+                {/* Apple-style Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/60 to-transparent rounded-t-[10px]" />
+                <FileText className="w-4 h-4 text-slate-950 relative z-10" />
+                <span className="relative z-10">Request a Project Quote</span>
               </button>
             </div>
           </div>
@@ -1113,63 +1143,60 @@ export const HomePage: React.FC<HomePageProps> = ({
         <MaterialCostCalculator products={products} onAddToCart={onAddToCart} cartItems={cartItems} />
 
         {/* =====================================================================
-            ROW 8: BRAND NAMES WE ARE SELLING (Official Logos & Borderless Showcase)
+            ROW 8: BRAND NAMES WE ARE SELLING (Official Logos & Liquid Glass Showcase)
             ===================================================================== */}
-        <section id="row-7-brands" className="space-y-6 pt-2">
+        <section id="row-7-brands" className="space-y-4 sm:space-y-6 pt-2">
           {/* Centered Heading & Subtitle */}
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <div className="inline-flex items-center justify-center gap-2">
-              <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
-                <Award className="w-3.5 h-3.5" />
-              </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-sf-pro text-[#0F1B2D] tracking-tight">
-                Brands Available on Our Platform
-              </h2>
+          <div className="text-center max-w-2xl mx-auto space-y-2 px-2">
+            {/* Header Badge */}
+            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-amber-500/15 text-amber-900 border border-amber-300/60 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-md text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+              <Award className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>100% Authorized OEM Sourcing</span>
             </div>
+
+            <h2 className="text-xl sm:text-3xl lg:text-4xl font-black font-sf-pro text-[#0F1B2D] tracking-tight leading-tight">
+              Brands Available on Our Platform
+            </h2>
             <p className="text-xs sm:text-sm text-[#5F6B7A] font-medium leading-relaxed">
-              100% Authorized &amp; Direct Manufacturer Sourcing for Kolkata Builders, Electricians &amp; Contractors
+              Direct factory depot rates &amp; genuine manufacturer warranty for Kolkata Builders, Electricians &amp; Contractors.
             </p>
           </div>
 
-          {/* Side-by-Side Borderless Official Brand Showcase Grid (Centered items if last row is incomplete) */}
-          <div className="flex flex-wrap items-stretch justify-center gap-3 sm:gap-4">
+          {/* Borderless Compact Brand Cards Grid - Clean & Minimal Space on Mobile */}
+          <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 sm:gap-2.5">
             {OFFICIAL_BRANDS.map((brand) => (
               <Link
                 key={`grid-${brand.id}`}
                 to={brand.targetRoute}
-                className="group w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.75rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(14.285%-0.9rem)] min-w-[130px] p-3.5 rounded-2xl bg-white hover:bg-slate-50/80 hover:shadow-xs transition-all flex flex-col justify-between items-center text-center cursor-pointer border-0"
+                className="group p-2 sm:p-2.5 rounded-xl bg-white/70 hover:bg-white hover:shadow-sm transition-all duration-200 active:scale-95 flex flex-col items-center justify-center text-center cursor-pointer border-0 shadow-none"
               >
                 {/* Official Logo Display */}
-                <div className="h-10 flex items-center justify-center w-full group-hover:scale-105 transition-transform duration-200">
+                <div className="h-8 sm:h-9 w-full max-w-[100px] sm:max-w-[120px] flex items-center justify-center group-hover:scale-105 transition-transform duration-200 px-0.5">
                   {brand.renderLogo()}
                 </div>
 
-                {/* Brand Name & Segment (No extra badges/tags) */}
-                <div className="mt-2 space-y-0.5 w-full text-center">
-                  <p className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-amber-800 transition-colors">
-                    {brand.name}
-                  </p>
-                  <p className="text-[10px] text-slate-500 line-clamp-1 font-medium">
-                    {brand.segment}
-                  </p>
-                </div>
+                {/* Brand Name Only */}
+                <p className="mt-1 text-[11px] sm:text-xs font-bold text-slate-800 truncate w-full text-center group-hover:text-amber-800 transition-colors leading-tight">
+                  {brand.name}
+                </p>
               </Link>
             ))}
           </div>
 
-          {/* Continuous Slow-Moving Logo Carousel (Bottom White/Light Bar - Edge to Edge Rectangle) */}
-          <div className="-mx-4 sm:-mx-6 relative overflow-hidden py-3.5 bg-white/95 rounded-none border-y border-x-0 border-slate-200/80 shadow-2xs">
-            <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+          {/* Continuous Slow-Moving Logo Carousel with Liquid Glass Border & Sheen */}
+          <div className="-mx-4 sm:-mx-6 relative overflow-hidden py-3 sm:py-3.5 bg-gradient-to-r from-white/95 via-amber-50/30 to-white/95 backdrop-blur-md rounded-none border-y border-x-0 border-amber-200/60 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9),0_2px_8px_rgba(0,0,0,0.03)]">
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/60 to-transparent z-5" />
+            <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-r from-white via-white/80 to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-16 bg-gradient-to-l from-white via-white/80 to-transparent z-10 pointer-events-none" />
 
-            <div className="animate-marquee-slow flex items-center gap-6 whitespace-nowrap">
+            <div className="animate-marquee-slow flex items-center gap-6 sm:gap-8 whitespace-nowrap">
               {OFFICIAL_BRANDS.map((brand) => (
                 <Link
                   key={`marquee-1-${brand.id}`}
                   to={brand.targetRoute}
-                  className="inline-flex items-center gap-3 px-4 py-1.5 hover:bg-slate-50 transition-all cursor-pointer select-none shrink-0"
+                  className="inline-flex items-center gap-3 px-3 py-1 hover:opacity-80 transition-opacity cursor-pointer select-none shrink-0"
                 >
-                  <div className="shrink-0 flex items-center justify-center">
+                  <div className="shrink-0 flex items-center justify-center max-w-[110px] sm:max-w-[130px]">
                     {brand.renderLogo()}
                   </div>
                 </Link>
@@ -1180,10 +1207,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <Link
                   key={`marquee-2-${brand.id}`}
                   to={brand.targetRoute}
-                  className="inline-flex items-center gap-3 px-4 py-1.5 hover:bg-slate-50 transition-all cursor-pointer select-none shrink-0"
+                  className="inline-flex items-center gap-3 px-3 py-1 hover:opacity-80 transition-opacity cursor-pointer select-none shrink-0"
                   aria-hidden="true"
                 >
-                  <div className="shrink-0 flex items-center justify-center">
+                  <div className="shrink-0 flex items-center justify-center max-w-[110px] sm:max-w-[130px]">
                     {brand.renderLogo()}
                   </div>
                 </Link>
@@ -1197,47 +1224,73 @@ export const HomePage: React.FC<HomePageProps> = ({
             ===================================================================== */}
         <section id="row-9-posters" className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {/* Banner 1: Bulk Contractor Project */}
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-amber-600 to-amber-800 text-white flex flex-col justify-between space-y-4 shadow-sm">
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full inline-block">
+          <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 text-white flex flex-col justify-between space-y-4 border border-amber-400/40 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-2px_6px_rgba(0,0,0,0.3),0_6px_20px_rgba(180,83,9,0.25)] transition-all duration-300 hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.5),inset_0_-2px_6px_rgba(0,0,0,0.35),0_10px_26px_rgba(180,83,9,0.35)]">
+            {/* Top Specular Liquid Glass Sheen */}
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/35 via-white/10 to-transparent rounded-t-2xl z-1" />
+
+            {/* Subtle Watermark Symbol in Background */}
+            <div className="pointer-events-none absolute -right-6 -bottom-6 w-44 h-44 text-white/10 flex items-center justify-center select-none rotate-12 z-0">
+              <Building2 className="w-full h-full stroke-[1.2]" />
+            </div>
+
+            <div className="relative z-10 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full inline-block border border-white/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]">
                 Contractor Desk
               </span>
-              <h3 className="text-xl font-black">Executing a Commercial Project in Kolkata?</h3>
-              <p className="text-xs text-amber-100 leading-relaxed">
+              <h3 className="text-xl font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
+                Executing a Commercial Project in Kolkata?
+              </h3>
+              <p className="text-xs text-amber-100/90 leading-relaxed font-medium">
                 Direct factory rate billing for electrical cables, switchboards, cement, and TMT rebars with scheduled on-site truck dispatch.
               </p>
             </div>
-            <div>
+
+            <div className="relative z-10 pt-1">
               <a
                 href="https://wa.me/918777400280?text=Hi%20Giriraj%20Power,%20I%20have%20a%20contractor%20bulk%20inquiry."
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-950 font-black text-xs hover:bg-amber-100 transition-all cursor-pointer"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-b from-white via-slate-100 to-slate-200 hover:from-white hover:via-amber-50 hover:to-amber-100 text-slate-950 font-black font-sf-pro text-xs transition-all duration-200 cursor-pointer active:scale-98 border border-white/90 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.2)]"
               >
-                <span>Chat with Project Desk</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                {/* Apple-style Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/70 to-transparent rounded-t-[10px]" />
+                <span className="relative z-10">Chat with Project Desk</span>
+                <ChevronRight className="w-3.5 h-3.5 relative z-10 text-slate-900" />
               </a>
             </div>
           </div>
 
           {/* Banner 2: Licensed Electrician Service */}
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white flex flex-col justify-between space-y-4 shadow-sm border border-slate-700">
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full inline-block">
+          <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white flex flex-col justify-between space-y-4 border border-slate-700/80 shadow-[inset_0_2px_4px_rgba(255,255,255,0.15),inset_0_-2px_6px_rgba(0,0,0,0.5),0_6px_20px_rgba(0,0,0,0.35)] transition-all duration-300 hover:shadow-[inset_0_2px_6px_rgba(255,255,255,0.25),inset_0_-2px_6px_rgba(0,0,0,0.6),0_10px_26px_rgba(0,0,0,0.45)]">
+            {/* Top Specular Liquid Glass Sheen */}
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/20 via-white/5 to-transparent rounded-t-2xl z-1" />
+
+            {/* Subtle Watermark Symbol in Background */}
+            <div className="pointer-events-none absolute -right-6 -bottom-6 w-44 h-44 text-emerald-400/10 flex items-center justify-center select-none rotate-12 z-0">
+              <Zap className="w-full h-full stroke-[1.2]" />
+            </div>
+
+            <div className="relative z-10 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 backdrop-blur-md px-2.5 py-1 rounded-full inline-block shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
                 Certified Technicians
               </span>
-              <h3 className="text-xl font-black">Need a Licensed Electrician for Wiring?</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h3 className="text-xl font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]">
+                Need a Licensed Electrician for Wiring?
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
                 Book verified electrical technicians for home diagnostics, short circuit troubleshooting, switchboard installations, and full site wiring.
               </p>
             </div>
-            <div>
+
+            <div className="relative z-10 pt-1">
               <button
                 onClick={() => navigate('/services')}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-black text-xs hover:bg-amber-500 transition-all cursor-pointer"
+                className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] text-slate-950 font-black font-sf-pro text-xs transition-all duration-200 cursor-pointer active:scale-98 border border-yellow-100/80 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.85),inset_0_-2px_4px_rgba(180,83,9,0.25),0_4px_14px_rgba(245,158,11,0.32)]"
               >
-                <span>Book Certified Electrician</span>
-                <ChevronRight className="w-3.5 h-3.5" />
+                {/* Apple-style Top Specular Liquid Glass Sheen */}
+                <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/60 to-transparent rounded-t-[10px]" />
+                <span className="relative z-10">Book Certified Electrician</span>
+                <ChevronRight className="w-3.5 h-3.5 relative z-10 text-slate-950" />
               </button>
             </div>
           </div>

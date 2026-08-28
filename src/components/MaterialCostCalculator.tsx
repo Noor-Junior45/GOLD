@@ -1022,9 +1022,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWireCoilsLight(Math.max(0, wireCoilsLight - 1))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${wireCoilsLight === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {wireCoilsLight}
@@ -1032,9 +1033,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWireCoilsLight(wireCoilsLight + 1)}
-                      className="w-7 h-7 rounded-md bg-amber-400 border border-amber-500 flex items-center justify-center font-black text-slate-950 active:bg-amber-500 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] active:scale-90 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-1.5px_2px_rgba(180,83,9,0.25),0_2px_6px_rgba(245,158,11,0.28)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/50 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10">+</span>
                     </button>
                   </div>
                 </div>
@@ -1055,9 +1057,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWireCoilsPower(Math.max(0, wireCoilsPower - 1))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${wireCoilsPower === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {wireCoilsPower}
@@ -1065,9 +1068,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWireCoilsPower(wireCoilsPower + 1)}
-                      className="w-7 h-7 rounded-md bg-amber-400 border border-amber-500 flex items-center justify-center font-black text-slate-950 active:bg-amber-500 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] active:scale-90 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-1.5px_2px_rgba(180,83,9,0.25),0_2px_6px_rgba(245,158,11,0.28)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/50 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10">+</span>
                     </button>
                   </div>
                 </div>
@@ -1088,9 +1092,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setModularSwitches(Math.max(0, modularSwitches <= 2 ? 0 : modularSwitches - 2))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${modularSwitches === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {modularSwitches}
@@ -1098,9 +1103,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setModularSwitches(modularSwitches + 2)}
-                      className="w-7 h-7 rounded-md bg-amber-400 border border-amber-500 flex items-center justify-center font-black text-slate-950 active:bg-amber-500 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] active:scale-90 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-1.5px_2px_rgba(180,83,9,0.25),0_2px_6px_rgba(245,158,11,0.28)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/50 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10">+</span>
                     </button>
                   </div>
                 </div>
@@ -1121,9 +1127,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setMcbBoxes(Math.max(0, mcbBoxes - 1))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${mcbBoxes === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {mcbBoxes}
@@ -1131,9 +1138,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setMcbBoxes(mcbBoxes + 1)}
-                      className="w-7 h-7 rounded-md bg-amber-400 border border-amber-500 flex items-center justify-center font-black text-slate-950 active:bg-amber-500 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] active:scale-90 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-1.5px_2px_rgba(180,83,9,0.25),0_2px_6px_rgba(245,158,11,0.28)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/50 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10">+</span>
                     </button>
                   </div>
                 </div>
@@ -1159,9 +1167,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setCementBags(Math.max(0, cementBags <= 5 ? 0 : cementBags - 5))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${cementBags === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {cementBags}
@@ -1169,9 +1178,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setCementBags(cementBags + 5)}
-                      className="w-7 h-7 rounded-md bg-emerald-500 border border-emerald-600 text-white flex items-center justify-center font-black active:bg-emerald-600 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#059669] hover:from-[#6EE7B7] hover:via-[#34D399] hover:to-[#10B981] active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.6),inset_0_-1.5px_2px_rgba(0,0,0,0.25),0_2px_6px_rgba(5,150,105,0.3)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">+</span>
                     </button>
                   </div>
                 </div>
@@ -1192,9 +1202,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setTmtSteelKg(Math.max(0, tmtSteelKg <= 50 ? 0 : tmtSteelKg - 50))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${tmtSteelKg === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {tmtSteelKg}
@@ -1202,9 +1213,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setTmtSteelKg(tmtSteelKg + 50)}
-                      className="w-7 h-7 rounded-md bg-emerald-500 border border-emerald-600 text-white flex items-center justify-center font-black active:bg-emerald-600 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#059669] hover:from-[#6EE7B7] hover:via-[#34D399] hover:to-[#10B981] active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.6),inset_0_-1.5px_2px_rgba(0,0,0,0.25),0_2px_6px_rgba(5,150,105,0.3)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">+</span>
                     </button>
                   </div>
                 </div>
@@ -1225,9 +1237,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWaterproofingLiters(Math.max(0, waterproofingLiters - 1))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${waterproofingLiters === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {waterproofingLiters}
@@ -1235,9 +1248,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWaterproofingLiters(waterproofingLiters + 1)}
-                      className="w-7 h-7 rounded-md bg-emerald-500 border border-emerald-600 text-white flex items-center justify-center font-black active:bg-emerald-600 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#059669] hover:from-[#6EE7B7] hover:via-[#34D399] hover:to-[#10B981] active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.6),inset_0_-1.5px_2px_rgba(0,0,0,0.25),0_2px_6px_rgba(5,150,105,0.3)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">+</span>
                     </button>
                   </div>
                 </div>
@@ -1258,9 +1272,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWallPuttyBags(Math.max(0, wallPuttyBags - 1))}
-                      className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                     >
-                      -
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                     </button>
                     <span className={`w-6 text-center text-xs font-black select-none ${wallPuttyBags === 0 ? 'text-slate-400' : 'text-slate-900'}`}>
                       {wallPuttyBags}
@@ -1268,9 +1283,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                     <button
                       type="button"
                       onClick={() => setWallPuttyBags(wallPuttyBags + 1)}
-                      className="w-7 h-7 rounded-md bg-emerald-500 border border-emerald-600 text-white flex items-center justify-center font-black active:bg-emerald-600 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                      className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#059669] hover:from-[#6EE7B7] hover:via-[#34D399] hover:to-[#10B981] active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.6),inset_0_-1.5px_2px_rgba(0,0,0,0.25),0_2px_6px_rgba(5,150,105,0.3)] transition-all duration-150"
                     >
-                      +
+                      <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                      <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">+</span>
                     </button>
                   </div>
                 </div>
@@ -1304,9 +1320,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                   <button
                     type="button"
                     onClick={() => handleUpdateCustomQuantity(item.product.id, -1)}
-                    className="w-7 h-7 rounded-md bg-white border border-slate-300 flex items-center justify-center font-black text-slate-700 active:bg-slate-200 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                    className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:via-red-500 hover:to-rose-600 active:scale-90 text-white flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-rose-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.5),inset_0_-1.5px_2px_rgba(0,0,0,0.3),0_2px_6px_rgba(225,29,72,0.3)] transition-all duration-150"
                   >
-                    -
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/40 to-transparent rounded-t-[6px]" />
+                    <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">-</span>
                   </button>
                   <span
                     className={`w-6 text-center text-xs font-black select-none ${
@@ -1318,9 +1335,10 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
                   <button
                     type="button"
                     onClick={() => handleUpdateCustomQuantity(item.product.id, 1)}
-                    className="w-7 h-7 rounded-md bg-amber-400 border border-amber-500 flex items-center justify-center font-black text-slate-950 active:bg-amber-500 cursor-pointer text-xs shrink-0 select-none shadow-2xs"
+                    className="relative overflow-hidden w-7 h-7 rounded-lg bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] active:scale-90 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 select-none cursor-pointer border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-1.5px_2px_rgba(180,83,9,0.25),0_2px_6px_rgba(245,158,11,0.28)] transition-all duration-150"
                   >
-                    +
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-[45%] bg-gradient-to-b from-white/50 to-transparent rounded-t-[6px]" />
+                    <span className="relative z-10">+</span>
                   </button>
                 </div>
               </div>
@@ -1478,32 +1496,36 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
               href={whatsappQuoteUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-[0.98] text-center shadow-xs"
+              className="relative overflow-hidden flex-1 py-3 px-3 rounded-xl bg-gradient-to-b from-[#10B981] via-[#059669] to-[#047857] hover:from-[#34D399] hover:via-[#10B981] hover:to-[#059669] text-white font-black font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-[0.98] text-center border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.45),inset_0_-2px_4px_rgba(0,0,0,0.25),0_4px_12px_rgba(5,150,105,0.35)]"
             >
-              <svg className="w-4 h-4 fill-white shrink-0" viewBox="0 0 24 24">
+              {/* Apple-style Top Specular Liquid Glass Sheen */}
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/35 to-transparent rounded-t-[10px]" />
+              <svg className="w-4 h-4 fill-white shrink-0 relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]" viewBox="0 0 24 24">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
               </svg>
-              <span>WhatsApp</span>
+              <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">WhatsApp</span>
             </a>
 
             <button
               type="button"
               onClick={handleAddAllToCart}
-              className={`flex-1 py-3 px-3 rounded-xl font-black font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs ${
+              className={`relative overflow-hidden flex-1 py-3 px-3 rounded-xl font-black font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                 addedToCartSuccess
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-amber-400 hover:bg-amber-500 text-slate-950 active:scale-[0.98] border border-amber-500'
+                  ? 'bg-gradient-to-b from-[#10B981] via-[#059669] to-[#047857] text-white border border-emerald-300/40 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.45),inset_0_-2px_4px_rgba(0,0,0,0.25),0_4px_12px_rgba(5,150,105,0.35)]'
+                  : 'bg-gradient-to-b from-[#FDE047] via-[#FBBF24] to-[#F59E0B] hover:from-[#FEF08A] hover:via-[#FCD34D] hover:to-[#FBBF24] text-slate-950 border border-yellow-100/70 shadow-[inset_0_1.5px_1px_rgba(255,255,255,0.8),inset_0_-2px_4px_rgba(180,83,9,0.25),0_4px_12px_rgba(245,158,11,0.32)]'
               }`}
             >
+              {/* Apple-style Top Specular Liquid Glass Sheen */}
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-[48%] bg-gradient-to-b from-white/45 to-transparent rounded-t-[10px]" />
               {addedToCartSuccess ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span>Added!</span>
+                  <CheckCircle2 className="w-4 h-4 text-white relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]" />
+                  <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">Added!</span>
                 </>
               ) : (
                 <>
-                  <ShoppingCart className="w-4 h-4 text-slate-950" />
-                  <span>Add to Cart</span>
+                  <ShoppingCart className="w-4 h-4 text-slate-950 relative z-10" />
+                  <span className="relative z-10">Add to Cart</span>
                 </>
               )}
             </button>

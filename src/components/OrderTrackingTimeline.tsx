@@ -6,12 +6,14 @@ interface OrderTrackingTimelineProps {
   order: Order;
   className?: string;
   compact?: boolean;
+  borderless?: boolean;
 }
 
 export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
   order,
   className = '',
-  compact = false
+  compact = false,
+  borderless = false
 }) => {
   const status: OrderStatus = order.status || 'pending';
   const isCancelled = status === 'cancelled';
@@ -104,7 +106,7 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
 
   if (isCancelled) {
     return (
-      <div className={`bg-red-50/90 border border-red-200 rounded-2xl p-3.5 sm:p-4 text-xs ${className}`}>
+      <div className={`bg-red-50/90 ${borderless ? '' : 'border border-red-200'} rounded-2xl p-3.5 sm:p-4 text-xs ${className}`}>
         <div className="flex items-center gap-2 text-red-800 font-bold mb-1">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
           <span>Order Cancelled</span>
@@ -123,7 +125,7 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
 
   return (
     <div
-      className={`bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 sm:p-4.5 ${
+      className={`bg-slate-50/90 ${borderless ? '' : 'border border-slate-200/80'} rounded-2xl p-3.5 sm:p-4.5 ${
         compact ? 'text-xs' : 'text-xs'
       } ${className}`}
     >

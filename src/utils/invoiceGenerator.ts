@@ -114,10 +114,10 @@ export async function downloadInvoicePDF(order: Order): Promise<void> {
         innerHTML += `
           <div style="text-align: center; margin-bottom: 20px;">
             <h1 style="font-size: 26px; font-weight: 800; letter-spacing: 0.5px; color: #111827; margin: 0 0 6px 0; text-transform: uppercase;">
-              Giriraj Power
+              BuildNow
             </h1>
             <p style="font-size: 13px; color: #4b5563; margin: 0 0 3px 0; font-weight: 500;">
-              Bediadanga 1st Ln, Nator Park, Kasba, Kolkata, West Bengal 700039
+              Giriraj Power Depot • Bediadanga 1st Ln, Nator Park, Kasba, Kolkata, West Bengal 700039
             </p>
             <p style="font-size: 13px; color: #6b7280; margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">
               Phone: +91 8777400280 &nbsp;•&nbsp; GSTIN: 19AABCG1234F1Z8
@@ -144,7 +144,7 @@ export async function downloadInvoicePDF(order: Order): Promise<void> {
             </div>
             <div style="text-align: right;">
               <span style="font-size: 10px; color: #94a3b8; letter-spacing: 1px; display: block; margin-bottom: 2px;">SERVED BY</span>
-              <strong style="font-size: 13px; color: #0f172a; font-weight: 700;">Giriraj Power Depot</strong>
+              <strong style="font-size: 13px; color: #0f172a; font-weight: 700;">BuildNow Kasba Depot</strong>
               <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
                 Payment: ${paymentMethodLabel}
               </div>
@@ -157,7 +157,7 @@ export async function downloadInvoicePDF(order: Order): Promise<void> {
         innerHTML += `
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 18px;">
             <div>
-              <strong style="font-size: 14px; color: #111827; letter-spacing: 0.5px; text-transform: uppercase;">GIRIRAJ POWER INVOICE (${invoiceNumber})</strong>
+              <strong style="font-size: 14px; color: #111827; letter-spacing: 0.5px; text-transform: uppercase;">BUILDNOW INVOICE (${invoiceNumber})</strong>
               <div style="font-size: 11px; color: #64748b;">Customer: ${order.customerName || 'Valued Customer'}</div>
             </div>
             <div style="text-align: right; font-size: 11px; font-family: ui-monospace, monospace; color: #64748b;">
@@ -251,7 +251,7 @@ export async function downloadInvoicePDF(order: Order): Promise<void> {
             THANK YOU FOR YOUR BUSINESS!
           </p>
           <p style="font-size: 13px; color: #475569; font-style: italic; margin: 0 0 8px 0;">
-            "Thank you for choosing Giriraj Power. Please visit us again!"
+            "Thank you for choosing BuildNow. Please visit us again!"
           </p>
           <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 10px; color: #94a3b8; font-family: ui-monospace, monospace; margin-top: 10px;">
             <span>Page ${pageIdx + 1} of ${totalPagesCount}</span>
@@ -285,7 +285,7 @@ export async function downloadInvoicePDF(order: Order): Promise<void> {
     }
 
     // Save and trigger direct browser download
-    const cleanFileName = `GirirajPower-Invoice-${order.id.slice(-6).toUpperCase()}.pdf`;
+    const cleanFileName = `BuildNow-Invoice-${order.id.slice(-6).toUpperCase()}.pdf`;
     pdf.save(cleanFileName);
   } finally {
     if (document.body.contains(container)) {

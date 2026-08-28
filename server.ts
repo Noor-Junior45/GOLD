@@ -133,7 +133,7 @@ async function dispatchResendEmail(options: ResendDispatchOptions): Promise<Rese
     fromEmail.includes("oieldiakir.resend.app") ||
     fromEmail.includes("example.com")
   ) {
-    fromEmail = "Giriraj Power <onboarding@resend.dev>";
+    fromEmail = "BuildNow <onboarding@resend.dev>";
   }
 
   let deliveredIds: string[] = [];
@@ -149,7 +149,7 @@ async function dispatchResendEmail(options: ResendDispatchOptions): Promise<Rese
         effectiveSender.includes("oieldiakir.resend.app") ||
         effectiveSender.includes("example.com")
       ) {
-        effectiveSender = "Giriraj Power <onboarding@resend.dev>";
+        effectiveSender = "BuildNow <onboarding@resend.dev>";
       }
 
       let res = await callResendApi(apiKey, {
@@ -173,7 +173,7 @@ async function dispatchResendEmail(options: ResendDispatchOptions): Promise<Rese
 
         if (isDomainErr && !effectiveSender.includes("onboarding@resend.dev")) {
           res = await callResendApi(apiKey, {
-            from: "Giriraj Power <onboarding@resend.dev>",
+            from: "BuildNow <onboarding@resend.dev>",
             to: [recipient],
             subject: options.subject,
             html: options.html,
