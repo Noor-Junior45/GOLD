@@ -44,6 +44,7 @@ import { checkKolkataDeliveryService } from '../../data/kolkataAreas';
 import { trackProductView } from '../../utils/analytics';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
 import { SEOHead } from '../SEOHead';
+import { shareProductDetails } from '../../utils/shareProduct';
 
 interface ProductDetailPageProps {
   onAddToCart: (product: Product) => void;
@@ -108,6 +109,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   // Reviews Pagination State
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [shareToast, setShareToast] = useState<string | null>(null);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [wishlistToast, setWishlistToast] = useState<string | null>(null);
 
@@ -239,11 +241,23 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     reviewsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleShareProduct = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+  const handleShareProduct = async () => {
+    if (!product) return;
+    const res = await shareProductDetails({
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      price: product.price,
+      category: product.category
+    });
+
+    if (res.success) {
       setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
+      setShareToast(res.method === 'clipboard' ? 'Link copied to clipboard!' : 'Shared!');
+      setTimeout(() => {
+        setCopiedLink(false);
+        setShareToast(null);
+      }, 2500);
     }
   };
 
@@ -653,9 +667,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     ) : (
                       <Share2 className="w-4 h-4 text-slate-700" />
                     )}
-                    {copiedLink && (
-                      <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md z-30">
-                        Copied!
+                    {shareToast && (
+                      <span className="absolute -top-7 right-0 px-2 py-0.5 rounded-lg bg-slate-900/90 backdrop-blur-xs text-white text-[10px] font-bold whitespace-nowrap shadow-lg border border-slate-700/50 z-30 animate-in fade-in zoom-in-95">
+                        {shareToast}
                       </span>
                     )}
                   </button>

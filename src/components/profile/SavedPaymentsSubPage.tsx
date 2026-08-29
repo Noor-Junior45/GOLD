@@ -165,19 +165,17 @@ export const SavedPaymentsSubPage: React.FC<SavedPaymentsSubPageProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
                 <Smartphone className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-black text-slate-900">No Saved UPI Handles</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
-                You haven't saved any UPI IDs yet. Add your Google Pay, PhonePe, Paytm, or bank UPI ID for 1-click express checkout.
-              </p>
+              <h3 className="text-sm font-black text-slate-900 mb-4">No Saved UPI Handles</h3>
               {!showAddUpi && (
                 <button
+                  type="button"
+                  id="btn-add-upi-id-empty"
                   onClick={() => {
                     setShowAddUpi(true);
                     setUpiError(null);
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-98"
+                  className="inline-flex items-center justify-center px-6 py-2.5 bg-indigo-600/90 hover:bg-indigo-600 active:bg-indigo-700 backdrop-blur-md border border-indigo-400/40 text-white text-xs font-black rounded-xl shadow-[0_4px_16px_rgba(79,70,229,0.3),inset_0_1px_1.5px_rgba(255,255,255,0.45)] active:scale-95 transition-all duration-200 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
                   <span>Add UPI ID</span>
                 </button>
               )}

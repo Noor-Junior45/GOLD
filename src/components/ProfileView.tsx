@@ -26,6 +26,7 @@ import {
   fetchProductsFromSupabase
 } from '../services/supabaseService';
 import { getFavoriteProductIds, toggleProductFavorite, clearAllFavorites } from '../services/favorites';
+import { INITIAL_PRODUCTS } from '../data/products';
 
 // Sub-page component modules for each button in Profile
 import { FavoritesSubPage } from './profile/FavoritesSubPage';
@@ -53,6 +54,7 @@ interface ProfileViewProps {
   onProfileUpdated: (updated: UserProfile) => void;
   onLogout: () => void;
   onAddToCart?: (product: Product) => void;
+  allProducts?: Product[];
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -67,7 +69,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onOpenServices,
   onProfileUpdated,
   onLogout,
-  onAddToCart
+  onAddToCart,
+  allProducts
 }) => {
   // Current active sub-page view: 'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms' | 'favorites'
   const [subPage, setSubPage] = useState<
@@ -76,7 +79,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Favorites state
   const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>(() => getFavoriteProductIds());
-  const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
+  const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>(() => (allProducts && allProducts.length > 0 ? allProducts : INITIAL_PRODUCTS));
+
+  useEffect(() => {
+    if (allProducts && allProducts.length > 0) {
+      setAllCatalogProducts(allProducts);
+    }
+  }, [allProducts]);
 
   useEffect(() => {
     fetchProductsFromSupabase().then((prods) => {

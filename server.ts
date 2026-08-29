@@ -1060,6 +1060,195 @@ async function startServer() {
   });
 
   // =========================================================================
+  // GOOGLE MAPS PLATFORM PLACES AUTOCOMPLETE & GEOCODING API PROXY
+  // =========================================================================
+  app.get("/api/maps/places-autocomplete", async (req, res) => {
+    try {
+      const query = (req.query.input as string || "").trim();
+      if (!query) {
+        return res.json({ success: true, results: [] });
+      }
+
+      const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+
+      // 1. If Google Maps Platform API Key is configured, use Google Places API (New)
+      if (apiKey && apiKey !== "YOUR_API_KEY") {
+        try {
+          const gmpRes = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": apiKey,
+              "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat,suggestions.placePrediction.text",
+            },
+            body: JSON.stringify({
+              input: query,
+              locationBias: {
+                circle: {
+                  center: { latitude: 22.5726, longitude: 88.3639 },
+                  radius: 45000.0,
+                },
+              },
+              includedRegionCodes: ["in"],
+              includedPrimaryTypes: [
+                "locality",
+                "sublocality",
+                "sublocality_level_1",
+                "sublocality_level_2",
+                "neighborhood",
+                "route",
+                "postal_code",
+                "administrative_area_level_2",
+                "political",
+                "intersection",
+              ],
+            }),
+          });
+
+          if (gmpRes.ok) {
+            const data = await gmpRes.json();
+            const suggestions = data.suggestions || [];
+            if (suggestions.length > 0) {
+              const googleResults = suggestions
+                .map((s: any) => {
+                  const pred = s.placePrediction;
+                  if (!pred) return null;
+                  const mainText = pred.structuredFormat?.mainText?.text || pred.text?.text || "";
+                  const secondaryText = pred.structuredFormat?.secondaryText?.text || "Kolkata, West Bengal";
+                  return {
+                    id: pred.placeId ? `gmp-${pred.placeId}` : `gmp-${Math.random()}`,
+                    placeId: pred.placeId,
+                    name: mainText,
+                    secondaryText: secondaryText,
+                    source: "google-maps-platform",
+                  };
+                })
+                .filter(Boolean);
+
+              if (googleResults.length > 0) {
+                return res.json({ success: true, source: "google-maps-platform", results: googleResults });
+              }
+            }
+          }
+        } catch (gmpErr) {
+          console.warn("[Google Maps API Autocomplete fallback notice]:", gmpErr);
+        }
+      }
+
+      // 2. High-precision Geocoding Fallback for Kolkata & West Bengal (Sanitized to Localities/Streets)
+      const queryWithKolkata =
+        query.toLowerCase().includes("kolkata") ||
+        query.toLowerCase().includes("howrah") ||
+        /^\d{6}$/.test(query)
+          ? query
+          : `${query}, Kolkata`;
+
+      const osmRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+          queryWithKolkata
+        )}&viewbox=88.10,22.75,88.58,22.35&bounded=0&countrycodes=in&limit=8&addressdetails=1`,
+        {
+          headers: { "Accept-Language": "en", "User-Agent": "GirirajPowerKolkata/1.0" },
+        }
+      );
+
+      if (osmRes.ok) {
+        const osmData = await osmRes.json();
+        if (Array.isArray(osmData) && osmData.length > 0) {
+          const results = osmData.map((item: any, idx: number) => {
+            const addr = item.address || {};
+            const placeName =
+              addr.road ||
+              addr.suburb ||
+              addr.neighbourhood ||
+              addr.quarter ||
+              item.name ||
+              item.display_name?.split(",")[0] ||
+              query;
+
+            const secondaryParts = [
+              addr.suburb || addr.neighbourhood || addr.quarter,
+              addr.city || addr.state_district || "Kolkata",
+              addr.state || "West Bengal",
+              addr.postcode ? `PIN ${addr.postcode}` : "",
+            ].filter(Boolean);
+
+            const secondary =
+              secondaryParts.join(", ") ||
+              item.display_name?.split(",").slice(1, 4).join(", ");
+
+            return {
+              id: item.place_id ? `osm-${item.place_id}` : `geo-${idx}`,
+              name: placeName.trim(),
+              secondaryText: secondary.trim(),
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon),
+              pincode: addr.postcode || "",
+              source: "geocoding",
+            };
+          });
+
+          return res.json({ success: true, source: "geocoding", results });
+        }
+      }
+
+      return res.json({ success: true, results: [] });
+    } catch (err: any) {
+      console.error("Places search error:", err);
+      return res.status(500).json({ success: false, message: "Location search failed" });
+    }
+  });
+
+  app.get("/api/maps/place-details", async (req, res) => {
+    try {
+      const placeId = (req.query.placeId as string || "").trim();
+      if (!placeId) {
+        return res.status(400).json({ success: false, message: "Place ID is required" });
+      }
+
+      const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+
+      if (apiKey && apiKey !== "YOUR_API_KEY") {
+        try {
+          const gmpRes = await fetch(
+            `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?fields=id,displayName,formattedAddress,location,addressComponents&key=${apiKey}`,
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+
+          if (gmpRes.ok) {
+            const data = await gmpRes.json();
+            const lat = data.location?.latitude;
+            const lng = data.location?.longitude;
+            let pincode = "";
+            if (Array.isArray(data.addressComponents)) {
+              const pinComp = data.addressComponents.find((c: any) => c.types?.includes("postal_code"));
+              if (pinComp) pincode = pinComp.longText || pinComp.shortText || "";
+            }
+
+            return res.json({
+              success: true,
+              placeId,
+              name: data.displayName?.text || "",
+              formattedAddress: data.formattedAddress || "",
+              lat,
+              lng,
+              pincode,
+            });
+          }
+        } catch (gmpErr) {
+          console.warn("[Google Maps Place Details error]:", gmpErr);
+        }
+      }
+
+      return res.json({ success: false, message: "Place details not available from API" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: "Place details request failed" });
+    }
+  });
+
+  // =========================================================================
   // CACHED PRODUCT CATALOG ENDPOINTS (IN-MEMORY + ETAG)
   // =========================================================================
   app.get("/api/products", async (req, res) => {

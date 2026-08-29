@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, MapPin, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Trash2 } from 'lucide-react';
 import { SavedAddress } from '../../types';
 
 interface SavedAddressesSubPageProps {
@@ -103,9 +103,8 @@ export const SavedAddressesSubPage: React.FC<SavedAddressesSubPageProps> = ({
                 id="btn-add-address-saved-list"
                 type="button"
                 onClick={onOpenLocationModal}
-                className="w-full py-3 px-4 bg-amber-400 hover:bg-yellow-400 active:bg-amber-500 text-slate-950 font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer border border-amber-500/20"
+                className="w-full py-3 px-4 bg-amber-400 hover:bg-yellow-400 active:bg-amber-500 text-slate-950 font-black rounded-xl text-sm flex items-center justify-center shadow-xs transition-all cursor-pointer border border-amber-500/20"
               >
-                <Plus className="w-4 h-4 text-slate-950 stroke-[2.5]" />
                 <span>Add New Address</span>
               </button>
             </div>

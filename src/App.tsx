@@ -649,6 +649,7 @@ export default function App() {
                 userProfile={userProfile}
                 orders={orders}
                 savedAddresses={savedAddresses}
+                allProducts={products}
                 onBack={() => navigate('/')}
                 onOpenLocationModal={() => setIsLocationModalOpen(true)}
                 onSelectAddress={(addr) => {

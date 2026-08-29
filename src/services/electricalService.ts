@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ElectricalProduct, ProductReview, FilterState, SortOption } from '../types/electrical';
+import { INITIAL_PRODUCTS } from '../data/products';
 
 /**
  * Transforms Supabase products to standard ElectricalProduct format
@@ -267,6 +268,18 @@ export async function fetchElectricalProductById(id: string): Promise<Electrical
     }
   } catch (err) {
     console.warn('Supabase product by id fetch error:', err);
+  }
+
+  // Fallback to initial seed products if database item not found
+  try {
+    const localMatch = INITIAL_PRODUCTS.find(
+      (item) => String(item.id).toLowerCase() === String(id).toLowerCase()
+    );
+    if (localMatch) {
+      return transformToElectricalProduct(localMatch);
+    }
+  } catch (e) {
+    console.warn('Local product match error:', e);
   }
 
   return null;

@@ -18,7 +18,9 @@ import {
   ZoomOut,
   Navigation,
   Loader2,
-  Plus
+  Plus,
+  Compass,
+  Map as MapIcon
 } from 'lucide-react';
 import L from 'leaflet';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
@@ -40,6 +42,18 @@ interface LocationModalProps {
   userProfile?: UserProfile | null;
   userPhone?: string | null;
   onSelectArea: (area: KolkataArea, address?: SavedAddress) => void;
+}
+
+export interface MapSearchResult {
+  id: string;
+  name: string;
+  secondaryText: string;
+  lat?: number;
+  lng?: number;
+  placeId?: string;
+  pincode?: string;
+  isMapGeocoded?: boolean;
+  source?: string;
 }
 
 // Helper function to extract a clean name from email if name is not set
@@ -73,6 +87,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [isMapDragging, setIsMapDragging] = useState(false);
+  const [mapSearchResults, setMapSearchResults] = useState<MapSearchResult[]>([]);
+  const [isSearchingMap, setIsSearchingMap] = useState(false);
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   // Map Coordinates & Pin Location
   const [pinCoordinates, setPinCoordinates] = useState<{ lat: number; lng: number }>({
@@ -475,30 +492,142 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     );
   };
 
-  // Search Results filtering
-  const searchResults = searchQuery.trim()
-    ? KOLKATA_AREAS.filter((area) => {
-        const q = searchQuery.toLowerCase().trim();
-        return (
-          area.name.toLowerCase().includes(q) ||
-          area.pincode.includes(q) ||
-          (area.exactStreet && area.exactStreet.toLowerCase().includes(q))
-        );
-      })
-    : [];
-
-  const handleSelectSearchResult = (area: KolkataArea) => {
-    setSearchQuery('');
-    setMatchedArea(area);
-    setDetectedStreet(area.exactStreet || area.name);
-    setBuildingRoad(area.exactStreet || area.name);
-    if (area.lat && area.lng) {
-      setPinCoordinates({ lat: area.lat, lng: area.lng });
+  // Real-time Google Maps Places / Geocoding Search Effect
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setMapSearchResults([]);
+      setIsSearchingMap(false);
+      return;
     }
-    handleUseCurrentLocationDirectly(area, area.exactStreet || area.name);
+
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    setIsSearchingMap(true);
+
+    const debounceTimer = setTimeout(async () => {
+      try {
+        // 1. Fetch from Google Maps Platform Places / Geocoding endpoint
+        const response = await fetch(
+          `/api/maps/places-autocomplete?input=${encodeURIComponent(q)}`,
+          {
+            signal: controller.signal
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.results) && data.results.length > 0) {
+            setMapSearchResults(data.results);
+            setIsSearchingMap(false);
+            return;
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Google Maps search error:', err);
+        }
+      }
+
+      // Local fallback with clean road and area names
+      const localMatches: MapSearchResult[] = KOLKATA_AREAS.filter((area) => {
+        const lowerQ = q.toLowerCase();
+        return (
+          area.name.toLowerCase().includes(lowerQ) ||
+          area.pincode.includes(lowerQ) ||
+          (area.exactStreet && area.exactStreet.toLowerCase().includes(lowerQ))
+        );
+      }).map((area) => ({
+        id: `area-${area.pincode}`,
+        name: area.name,
+        secondaryText: `Kolkata, West Bengal • PIN ${area.pincode}`,
+        lat: area.lat || 22.5735,
+        lng: area.lng || 88.4331,
+        pincode: area.pincode,
+        isMapGeocoded: false
+      }));
+
+      setMapSearchResults(localMatches);
+      setIsSearchingMap(false);
+    }, 250);
+
+    return () => {
+      clearTimeout(debounceTimer);
+      controller.abort();
+    };
+  }, [searchQuery]);
+
+  // Handle selection of a Google Maps search result
+  const handleSelectMapSearchResult = async (result: MapSearchResult, openPinMap = true) => {
+    let lat = result.lat;
+    let lng = result.lng;
+    let pin = result.pincode;
+
+    // If Google Maps Place ID exists but coords are not yet present, resolve place details
+    if (result.placeId && (!lat || !lng)) {
+      try {
+        const detRes = await fetch(`/api/maps/place-details?placeId=${encodeURIComponent(result.placeId)}`);
+        if (detRes.ok) {
+          const detData = await detRes.json();
+          if (detData.success && detData.lat && detData.lng) {
+            lat = detData.lat;
+            lng = detData.lng;
+            if (detData.pincode) pin = detData.pincode;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch place details:', err);
+      }
+    }
+
+    const finalLat = lat || 22.5735;
+    const finalLng = lng || 88.4331;
+
+    setPinCoordinates({ lat: finalLat, lng: finalLng });
+
+    // Match closest Kolkata service hub
+    let closest = KOLKATA_AREAS[0];
+    let minDistance = Number.MAX_VALUE;
+
+    KOLKATA_AREAS.forEach((area) => {
+      if (pin && area.pincode === pin) {
+        closest = area;
+        minDistance = 0;
+      } else if (area.lat && area.lng) {
+        const dist = Math.hypot(area.lat - finalLat, area.lng - finalLng);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = area;
+        }
+      }
+    });
+
+    const street = result.name || closest.exactStreet || closest.name;
+    const updatedArea: KolkataArea = {
+      ...closest,
+      exactStreet: street
+    };
+
+    setMatchedArea(updatedArea);
+    setDetectedStreet(street);
+    setBuildingRoad(street);
+
+    if (openPinMap) {
+      setMapEntrySource('detect_location');
+      setStep('map_pin');
+      setTimeout(() => {
+        flyToCoords(finalLat, finalLng, 18);
+      }, 150);
+    } else {
+      handleUseCurrentLocationDirectly(updatedArea, street);
+    }
   };
 
-  // Open map to pinpoint
+  // Open map to pinpoint arbitrary area
   const handleOpenPinOnMap = (area: KolkataArea) => {
     setMapEntrySource('detect_location');
     setMatchedArea(area);
@@ -508,6 +637,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       setPinCoordinates({ lat: area.lat, lng: area.lng });
     }
     setStep('map_pin');
+    setTimeout(() => {
+      if (area.lat && area.lng) {
+        flyToCoords(area.lat, area.lng, 18);
+      }
+    }, 150);
   };
 
   // Proceed to address details
@@ -653,19 +787,22 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </button>
             </div>
 
-            {/* Clean Search Input Box (as shown in reference image) */}
-            <div className="relative mb-6">
-              <div className="flex items-center bg-white border border-slate-300 focus-within:border-slate-800 focus-within:ring-1 focus-within:ring-slate-800 transition-all px-4 py-3.5 shadow-2xs">
+            {/* Search Input Box with Map connection */}
+            <div className="relative mb-4">
+              <div className="flex items-center bg-white border border-slate-300 focus-within:border-slate-800 focus-within:ring-1 focus-within:ring-slate-800 transition-all px-3.5 py-3 shadow-2xs rounded-lg">
+                <Search className="w-4 h-4 text-slate-400 shrink-0 mr-2.5" />
                 <input
                   type="text"
                   id="location-search-input"
-                  placeholder="Search for area, street name.."
+                  placeholder="Search with Google Maps (street, area, PIN)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
-                  className="w-full bg-transparent border-none text-sm sm:text-base font-normal text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                  className="w-full bg-transparent border-none text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
-                {searchQuery ? (
+                {isSearchingMap ? (
+                  <Loader2 className="w-4 h-4 text-emerald-600 animate-spin shrink-0 ml-2" />
+                ) : searchQuery ? (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
@@ -673,52 +810,72 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   >
                     Clear
                   </button>
-                ) : (
-                  <Search className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
-                )}
+                ) : null}
               </div>
             </div>
 
-            {/* Real-time Search Suggestions */}
+            {/* Real-time Google Maps Places / Geocoded Search Results */}
             {searchQuery.trim() ? (
-              <div className="flex-1 bg-white border border-slate-200 shadow-sm p-2 space-y-1 overflow-y-auto rounded-none mb-4">
-                {searchResults.length > 0 ? (
-                  searchResults.map((area) => (
-                    <div
-                      key={area.pincode}
-                      className="w-full p-3 text-left hover:bg-slate-100/80 flex items-center justify-between group cursor-pointer transition-colors border-b border-slate-100 last:border-none"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSelectSearchResult(area)}
-                        className="flex-1 flex items-start gap-3 truncate text-left cursor-pointer"
+              <div className="flex-1 flex flex-col bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden mb-4">
+                <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                  <span className="flex items-center gap-1.5 text-slate-800">
+                    <MapIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    Google Maps Locations
+                  </span>
+                  {isSearchingMap ? (
+                    <span className="text-emerald-700 font-normal normal-case flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Searching Google Maps...
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-normal normal-case text-slate-400">
+                      Google Maps Platform
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+                  {mapSearchResults.length > 0 ? (
+                    mapSearchResults.map((result) => (
+                      <div
+                        key={result.id}
+                        onClick={() => handleSelectMapSearchResult(result, true)}
+                        className="w-full p-3.5 text-left hover:bg-slate-50 flex items-center justify-between group cursor-pointer transition-colors"
                       >
-                        <MapPin className="w-4 h-4 text-slate-500 group-hover:text-slate-900 shrink-0 mt-0.5" />
-                        <div className="truncate">
-                          <div className="text-sm font-semibold text-slate-900 truncate">
-                            {area.name}
+                        <div className="flex items-start gap-3 truncate text-left">
+                          <div className="w-7 h-7 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                            <MapPin className="w-3.5 h-3.5" />
                           </div>
-                          <div className="text-xs text-slate-500 mt-0.5">
-                            {area.exactStreet ? `${area.exactStreet} • ` : ''}PIN {area.pincode}
+                          <div className="truncate">
+                            <div className="text-sm font-semibold text-slate-900 group-hover:text-black truncate">
+                              {result.name}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5 truncate">
+                              {result.secondaryText}
+                            </div>
                           </div>
                         </div>
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPinOnMap(area)}
-                        className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded transition-colors shrink-0 ml-2 cursor-pointer"
-                        title="Fine-tune on map"
-                      >
-                        Map
-                      </button>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 group-hover:bg-emerald-100 px-2 py-1 rounded transition-colors flex items-center gap-1">
+                            <Crosshair className="w-3 h-3" />
+                            Select
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : !isSearchingMap ? (
+                    <div className="p-6 text-center">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2.5">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700">No exact area found</p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Try searching with a landmark, main road or PIN code
+                      </p>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-6 text-center text-xs sm:text-sm text-slate-500">
-                    No matching location found. Try searching with an area name or 6-digit pincode.
-                  </div>
-                )}
+                  ) : null}
+                </div>
               </div>
             ) : (
               <>

@@ -66,7 +66,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
           title: 'Privacy Policy',
           subtitle: 'How BuildNow protects, secures, and handles your account and order information',
           icon: Lock,
-          badge: 'Privacy & Security'
+          badge: ''
         };
       case 'terms':
       default:
@@ -74,7 +74,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
           title: 'Terms of Service',
           subtitle: 'Rules and conditions governing our marketplace, materials, and services',
           icon: FileText,
-          badge: 'Legal Agreement'
+          badge: ''
         };
     }
   };
