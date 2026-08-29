@@ -24,7 +24,13 @@ import { HomePage } from './components/HomePage';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { InstallAppModal } from './components/InstallAppModal';
 import { SEOHead } from './components/SEOHead';
-import { trackPageView, trackAddToCart as trackGAAddToCart, trackRemoveFromCart as trackGARemoveFromCart, trackProductView } from './utils/analytics';
+import {
+  trackPageView,
+  trackAddToCart as trackGAAddToCart,
+  trackRemoveFromCart as trackGARemoveFromCart,
+  trackProductView,
+  initShareReferralTracker
+} from './utils/analytics';
 import { hapticLight, hapticMedium, hapticWarning } from './utils/haptics';
 import {
   fetchCartItemsFromSupabase,
@@ -104,7 +110,7 @@ export default function App() {
   
   // Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  
+
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isDeviceLocationPromptOpen, setIsDeviceLocationPromptOpen] = useState(false);
@@ -339,9 +345,10 @@ export default function App() {
     } catch {}
   };
 
-  // Global Scroll Reset and GA4 Page View on route change
+  // Global Scroll Reset, GA4 Page View, and Shared Link Referral detection on route change
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    initShareReferralTracker(location.pathname, location.search);
     trackPageView(location.pathname + location.search);
   }, [location.pathname, location.search]);
 
@@ -500,6 +507,7 @@ export default function App() {
   };
 
   const handleCategorySelect = (cat: string) => {
+    hapticLight();
     setActiveCategory(cat);
     if (cat === 'electrical') {
       navigate('/electrical');

@@ -34,6 +34,7 @@ import {
   Building2
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
+import { SwipeableItem } from './SwipeableItem';
 import { createFirestoreOrder, getStoredAddresses } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS, getProductColorOptions } from '../data/wireColors';
@@ -695,7 +696,10 @@ export const CartView: React.FC<CartViewProps> = ({
         {hasMultipleCategories && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
             <button
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => {
+                hapticSelection();
+                setSelectedCategory('all');
+              }}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer border ${
                 selectedCategory === 'all'
                   ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-2xs'
@@ -707,7 +711,10 @@ export const CartView: React.FC<CartViewProps> = ({
             {categoriesInCart.map((cat) => (
               <button
                 key={cat.key}
-                onClick={() => setSelectedCategory(cat.key)}
+                onClick={() => {
+                  hapticSelection();
+                  setSelectedCategory(cat.key);
+                }}
                 className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer border ${
                   selectedCategory === cat.key
                     ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-2xs'
@@ -764,10 +771,17 @@ export const CartView: React.FC<CartViewProps> = ({
             const currentColorObj = hasColorOptions ? availableColors.find((c) => c.name === currentColor) || availableColors[0] : null;
 
             return (
-              <div
+              <SwipeableItem
                 key={`${product.id}-${item.selectedColor || 'default'}`}
-                className="p-3 sm:p-4 flex flex-col gap-2 transition-colors hover:bg-slate-50/50"
+                onDelete={() => {
+                  onRemoveItem(product.id, item.selectedColor);
+                  removeCartItemFromSupabase(product.id);
+                }}
+                deleteLabel="Remove"
               >
+                <div
+                  className="p-3 sm:p-4 flex flex-col gap-2 transition-colors hover:bg-slate-50/50"
+                >
                 {/* Main Product Info Row */}
                 <div className="flex items-start gap-2.5 sm:gap-4">
                   {/* Thumbnail Image */}
@@ -953,8 +967,9 @@ export const CartView: React.FC<CartViewProps> = ({
                   </div>
                 </div>
               </div>
-            );
-          })}
+            </SwipeableItem>
+          );
+        })}
         </div>
 
         {/* 5. SAVED FOR LATER SECTION (if any items exist) */}

@@ -28,6 +28,7 @@ import { fetchProductsFromSupabase } from '../services/supabaseService';
 import { OFFICIAL_BRANDS } from './BrandLogos';
 import { ProductCardImage } from './ProductCardImage';
 import { MaterialCostCalculator } from './MaterialCostCalculator';
+import { hapticLight, hapticSelection } from '../utils/haptics';
 
 export interface HomePageProps {
   onAddToCart: (product: Product) => void;
@@ -779,7 +780,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div
                   key={cat.id}
                   id={`cat-card-${cat.id}`}
-                  onClick={() => navigate(cat.targetRoute)}
+                  onClick={() => {
+                    hapticLight();
+                    navigate(cat.targetRoute);
+                  }}
                   className="w-[calc((100%-1rem)/3)] sm:w-[calc((100%-3.75rem)/6)] group flex flex-col items-center cursor-pointer select-none"
                 >
                   {/* Apple Liquid Glass Depth Card with Seamless Image Integration */}

@@ -78,7 +78,11 @@ service cloud.firestore {
 
     // Saved Addresses
     match /user_addresses/{addressId} {
-      allow read, write: if true;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+        && (incoming().user_id == request.auth.uid || incoming().userId == request.auth.uid || isOwner(incoming().userId));
+      allow delete: if isSignedIn()
+        && (existing().user_id == request.auth.uid || existing().userId == request.auth.uid || isAdmin());
     }
 
     // Saved UPI Handles

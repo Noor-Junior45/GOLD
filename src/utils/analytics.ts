@@ -97,10 +97,16 @@ export function trackProductListView(products: AnyProduct[], listName: string) {
 export function trackAddToCart(product: AnyProduct, quantity = 1, selectedVariant?: string) {
   if (!product) return;
   const item = formatGAProductItem(product, quantity, selectedVariant);
+  const refInfo = getShareReferralInfo();
   sendGAEvent('add_to_cart', {
     currency: 'INR',
     value: (item.price || 0) * quantity,
-    items: [item]
+    items: [item],
+    ...(refInfo.isShareReferral ? {
+      is_share_referral: true,
+      referral_source: refInfo.referralSource,
+      referral_item_id: refInfo.sharedItemId || undefined
+    } : {})
   });
 }
 
@@ -121,10 +127,16 @@ export function trackRemoveFromCart(product: AnyProduct, quantity = 1) {
  * Track Begin Checkout (begin_checkout)
  */
 export function trackBeginCheckout(cartItems: CartItem[], totalAmount: number) {
+  const refInfo = getShareReferralInfo();
   sendGAEvent('begin_checkout', {
     currency: 'INR',
     value: totalAmount,
-    items: cartItems.map((item) => formatGAProductItem(item.product, item.quantity, item.selectedColor))
+    items: cartItems.map((item) => formatGAProductItem(item.product, item.quantity, item.selectedColor)),
+    ...(refInfo.isShareReferral ? {
+      is_share_referral: true,
+      referral_source: refInfo.referralSource,
+      referral_item_id: refInfo.sharedItemId || undefined
+    } : {})
   });
 }
 
@@ -132,13 +144,19 @@ export function trackBeginCheckout(cartItems: CartItem[], totalAmount: number) {
  * Track Purchase / Order Placed (purchase)
  */
 export function trackPurchase(order: Order, items: CartItem[], totalAmount: number, shippingFee = 0) {
+  const refInfo = getShareReferralInfo();
   sendGAEvent('purchase', {
     transaction_id: order.id,
     value: totalAmount,
     currency: 'INR',
     shipping: shippingFee,
     payment_type: order.paymentMethod || 'COD / Online',
-    items: items.map((item) => formatGAProductItem(item.product, item.quantity, item.selectedColor))
+    items: items.map((item) => formatGAProductItem(item.product, item.quantity, item.selectedColor)),
+    ...(refInfo.isShareReferral ? {
+      is_share_referral: true,
+      referral_source: refInfo.referralSource,
+      referral_item_id: refInfo.sharedItemId || undefined
+    } : {})
   });
 }
 
@@ -150,4 +168,154 @@ export function trackSearch(searchTerm: string) {
   sendGAEvent('search', {
     search_term: searchTerm.trim()
   });
+}
+
+// ============================================================================
+// SHARE EVENTS & SHARED LINK CONVERSION TRACKING
+// ============================================================================
+
+export interface ShareTrackingParams {
+  product: AnyProduct;
+  method: 'native' | 'clipboard';
+  shareUrl?: string;
+  shareTitle?: string;
+  shareChannel?: string;
+}
+
+/**
+ * Track when the native or clipboard share dialog is triggered/opened
+ */
+export function trackShareDialogOpen(params: ShareTrackingParams) {
+  if (!params?.product) return;
+  const item = formatGAProductItem(params.product, 1);
+  const platform = typeof navigator !== 'undefined'
+    ? (/Android/i.test(navigator.userAgent) ? 'android' : /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'ios' : 'desktop')
+    : 'web';
+
+  const payload = {
+    method: params.method,
+    content_type: 'product',
+    item_id: String(item.item_id || ''),
+    item_name: String(item.item_name || ''),
+    item_brand: String(item.item_brand || ''),
+    item_category: String(item.item_category || ''),
+    price: Number(item.price || 0),
+    share_url: params.shareUrl || '',
+    share_title: params.shareTitle || '',
+    share_platform: platform,
+    share_channel: params.shareChannel || (params.method === 'native' ? `${platform}_share_sheet` : 'clipboard_copy'),
+    timestamp: new Date().toISOString()
+  };
+
+  // 1. Standard GA4 'share' event
+  sendGAEvent('share', payload);
+
+  // 2. Explicit 'share_dialog_open' event for funnel conversion tracking
+  sendGAEvent('share_dialog_open', payload);
+}
+
+/**
+ * Track successful completion of share action
+ */
+export function trackShareCompleted(params: ShareTrackingParams) {
+  if (!params?.product) return;
+  const item = formatGAProductItem(params.product, 1);
+  sendGAEvent('share_completed', {
+    method: params.method,
+    content_type: 'product',
+    item_id: String(item.item_id || ''),
+    item_name: String(item.item_name || ''),
+    share_url: params.shareUrl || '',
+    timestamp: new Date().toISOString()
+  });
+}
+
+/**
+ * Track when native share dialog is dismissed/cancelled by user
+ */
+export function trackShareCancelled(params: { product: AnyProduct; method: 'native' }) {
+  if (!params?.product) return;
+  const item = formatGAProductItem(params.product, 1);
+  sendGAEvent('share_cancelled', {
+    method: 'native',
+    content_type: 'product',
+    item_id: String(item.item_id || ''),
+    item_name: String(item.item_name || ''),
+    timestamp: new Date().toISOString()
+  });
+}
+
+const SHARE_REFERRAL_SESSION_KEY = 'buildnow_share_referral';
+
+export interface ShareReferralInfo {
+  isShareReferral: boolean;
+  referralSource?: string;
+  sharedItemId?: string;
+  landingPath?: string;
+  landedAt?: string;
+}
+
+/**
+ * Check if the active session originated from a shared product link
+ */
+export function getShareReferralInfo(): ShareReferralInfo {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      const raw = window.sessionStorage.getItem(SHARE_REFERRAL_SESSION_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch {}
+  return { isShareReferral: false };
+}
+
+/**
+ * Initialize / Detect incoming shared link referral visits
+ * Call this on route change to capture incoming traffic from shared links
+ */
+export function initShareReferralTracker(pathname?: string, searchParamsString?: string) {
+  try {
+    if (typeof window === 'undefined') return;
+
+    const search = searchParamsString !== undefined ? searchParamsString : window.location.search;
+    const path = pathname || window.location.pathname;
+    const params = new URLSearchParams(search);
+
+    const isSharedSource = 
+      params.get('utm_source') === 'native_share' ||
+      params.get('utm_source') === 'share' ||
+      params.get('ref') === 'shared_link' ||
+      params.get('ref') === 'share' ||
+      params.get('utm_campaign') === 'product_share';
+
+    if (isSharedSource) {
+      // Extract product ID from URL if product page
+      const idMatch = path.match(/\/product\/([^/?#]+)/i);
+      const sharedItemId = idMatch ? decodeURIComponent(idMatch[1]) : params.get('item_id') || undefined;
+
+      const referralData: ShareReferralInfo = {
+        isShareReferral: true,
+        referralSource: params.get('utm_source') || params.get('ref') || 'native_share',
+        sharedItemId,
+        landingPath: path,
+        landedAt: new Date().toISOString()
+      };
+
+      try {
+        window.sessionStorage.setItem(SHARE_REFERRAL_SESSION_KEY, JSON.stringify(referralData));
+      } catch {}
+
+      // Fire tracking event for shared link landing
+      sendGAEvent('share_link_opened', {
+        referral_source: referralData.referralSource,
+        landing_path: path,
+        item_id: sharedItemId || undefined,
+        utm_medium: params.get('utm_medium') || 'referral',
+        utm_campaign: params.get('utm_campaign') || 'product_share'
+      });
+    }
+  } catch (err) {
+    console.debug('Share referral tracker error:', err);
+  }
 }

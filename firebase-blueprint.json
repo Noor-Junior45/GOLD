@@ -94,6 +94,29 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["id", "phone", "name"]
+    },
+    "UserAddress": {
+      "title": "UserAddress",
+      "description": "Customer saved delivery addresses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "tag": { "type": "string", "enum": ["home", "work", "hotel", "other"] },
+        "tagLabel": { "type": "string", "maxLength": 50 },
+        "houseName": { "type": "string", "maxLength": 150 },
+        "houseFlat": { "type": "string", "maxLength": 150 },
+        "buildingRoad": { "type": "string", "maxLength": 200 },
+        "landmark": { "type": "string", "maxLength": 150 },
+        "area": { "type": "object" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "formattedExactAddress": { "type": "string", "maxLength": 300 },
+        "receiverName": { "type": "string", "maxLength": 100 },
+        "receiverPhone": { "type": "string", "maxLength": 25 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "houseFlat", "buildingRoad", "area"]
     }
   },
   "firestore": {
@@ -112,6 +135,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Registered user contact and address profiles"
+    },
+    "/user_addresses/{addressId}": {
+      "schema": { "$ref": "#/entities/UserAddress" },
+      "description": "Customer saved delivery addresses"
     }
   }
 }

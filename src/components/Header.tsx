@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Wrench, Search, X, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
 import { detectQueryCategory } from '../utils/searchHelper';
+import { hapticLight, hapticSelection } from '../utils/haptics';
 
 interface HeaderProps {
   currentArea: KolkataArea;
@@ -102,6 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
     const targetUrl = `${targetPath}?q=${encodeURIComponent(q)}`;
 
     // Sync active category & close mobile search
+    hapticSelection();
     onSelectCategory(targetCategory);
     onTabChange(targetCategory);
     setIsMobileSearchOpen(false);

@@ -18,6 +18,8 @@ import { Product } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
 import { isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
 import { ProductCardImage } from '../ProductCardImage';
+import { hapticLight, hapticSelection } from '../../utils/haptics';
+import { motion } from 'motion/react';
 
 interface ElectricalListingPageProps {
   onAddToCart: (product: Product) => void;
@@ -198,6 +200,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
 
   // Filter Handlers
   const handleToggleSubcategory = (sub: string) => {
+    hapticSelection();
     setFilters((prev) => {
       const exists = prev.subcategories.includes(sub);
       const nextSubs = exists
@@ -209,6 +212,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   };
 
   const handleToggleBrand = (brand: string) => {
+    hapticSelection();
     setFilters((prev) => {
       const exists = prev.brands.includes(brand);
       const nextBrands = exists
@@ -220,6 +224,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   };
 
   const handleClearAllFilters = () => {
+    hapticLight();
     setFilters({
       subcategories: [],
       brands: [],
@@ -418,7 +423,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
-            {paginatedProducts.map((product) => {
+            {paginatedProducts.map((product, index) => {
               const cartQty = getProductCartQty(product.id);
               const adapted = adaptToCartProduct(product);
               const primaryImage =
@@ -426,8 +431,15 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop';
 
               return (
-                <div
+                <motion.div
                   key={product.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.32,
+                    ease: [0.25, 0.1, 0.25, 1],
+                    delay: Math.min(index * 0.035, 0.35),
+                  }}
                   className="group flex flex-col justify-between transition-all duration-200 border-0 p-1"
                 >
                   {/* Clean Product Image with Floating Discount Tag */}
@@ -542,7 +554,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>

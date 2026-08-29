@@ -27,6 +27,7 @@ import { KOLKATA_AREAS } from '../data/kolkataAreas';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
 import {
   getStoredAddresses,
+  fetchUserAddresses,
   saveAddressToFirestore,
   deleteAddressFromFirestore,
   subscribeToAddresses,
@@ -163,6 +164,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setSavedAddresses(getStoredAddresses());
+      fetchUserAddresses().then((res) => {
+        if (res && res.length > 0) {
+          setSavedAddresses(res);
+        }
+      }).catch(() => {});
       setStep('search_home');
       setSearchQuery('');
       setFormError(null);

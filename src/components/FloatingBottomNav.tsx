@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, Zap, Building2, Wrench } from 'lucide-react';
+import { hapticLight, hapticSelection } from '../utils/haptics';
 
 interface FloatingBottomNavProps {
   activeTab: string;
@@ -7,16 +8,6 @@ interface FloatingBottomNavProps {
   onTabChange: (tab: string) => void;
   onSelectCategory: (category: string) => void;
 }
-
-const triggerHaptic = (pattern: number | number[] = 25) => {
-  try {
-    if (typeof window !== 'undefined' && 'navigator' in window && typeof navigator.vibrate === 'function') {
-      navigator.vibrate(pattern);
-    }
-  } catch {
-    // Ignore in browsers/sandboxes without vibration support
-  }
-};
 
 export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
   activeTab,
@@ -41,7 +32,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           id="floating-nav-home"
           type="button"
           onClick={() => {
-            triggerHaptic(25);
+            hapticSelection();
             onTabChange('home');
             onSelectCategory('all');
           }}
@@ -62,7 +53,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           id="floating-nav-electrical"
           type="button"
           onClick={() => {
-            triggerHaptic(25);
+            hapticSelection();
             onTabChange('electrical');
             onSelectCategory('electrical');
           }}
@@ -85,7 +76,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           id="floating-nav-construction"
           type="button"
           onClick={() => {
-            triggerHaptic(25);
+            hapticSelection();
             onTabChange('construction');
             onSelectCategory('construction');
           }}
@@ -106,7 +97,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           id="floating-nav-wiring"
           type="button"
           onClick={() => {
-            triggerHaptic(25);
+            hapticSelection();
             onTabChange('services');
           }}
           title="Wiring & Electrical Services"

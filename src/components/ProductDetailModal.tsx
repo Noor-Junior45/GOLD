@@ -12,6 +12,8 @@ import { checkKolkataDeliveryService } from '../data/kolkataAreas';
 import { trackProductView } from '../utils/analytics';
 import { hapticLight, hapticMedium } from '../utils/haptics';
 import { shareProductDetails } from '../utils/shareProduct';
+import { ZoomableImage } from './ZoomableImage';
+import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
 
 import { ProductReviewsSection } from './ProductReviewsSection';
 
@@ -114,9 +116,32 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const activeColorObj = colorOptions.find((c) => c.name === selectedWireColor);
   const currentImage = allImages[selectedImageIndex] || product.image;
 
+  // Mobile Bottom Sheet Drag-to-Dismiss Gesture
+  const {
+    handleTouchStart: handleSheetTouchStart,
+    handleTouchMove: handleSheetTouchMove,
+    handleTouchEnd: handleSheetTouchEnd,
+    dragStyle
+  } = useBottomSheetDismiss({
+    onClose
+  });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div
+        style={dragStyle}
+        className="bg-white rounded-t-3xl sm:rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[92vh] sm:max-h-[90vh] overflow-y-auto"
+      >
+        {/* Mobile Drag Down Dismiss Bar */}
+        <div
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+          className="w-full flex flex-col items-center justify-center pt-0 pb-3 sm:hidden cursor-grab active:cursor-grabbing touch-none select-none"
+        >
+          <div className="w-12 h-1.5 bg-slate-300 rounded-full hover:bg-slate-400 transition-colors" />
+          <span className="text-[9px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">Swipe down to close</span>
+        </div>
         
         {/* Actions Top Right: Wishlist Heart, Share & Close Button */}
         <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
@@ -169,10 +194,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           {/* Image & Quick Guarantee */}
           <div>
             <div className="relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 aspect-square group select-none">
-              <img
+              <ZoomableImage
                 src={currentImage}
                 alt={product.name}
                 className="w-full h-full object-contain p-2"
+                containerClassName="w-full h-full"
+                onSwipeLeft={() => {
+                  if (allImages.length > 1) {
+                    setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
+                  }
+                }}
+                onSwipeRight={() => {
+                  if (allImages.length > 1) {
+                    setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+                  }
+                }}
               />
 
               {allImages.length > 1 && (
@@ -193,7 +229,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   >
                     <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                   </button>
-                  <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                  <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs z-10">
                     {selectedImageIndex + 1} / {allImages.length}
                   </div>
                 </>

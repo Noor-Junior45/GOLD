@@ -24,6 +24,7 @@ import {
 import { Product } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { ProductCardImage } from './ProductCardImage';
+import { hapticLight, hapticSelection } from '../utils/haptics';
 
 interface ConstructionPageProps {
   onAddToCart: (product: Product) => void;
@@ -338,6 +339,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
 
   // Filter Handlers
   const handleToggleSubcategory = (sub: string) => {
+    hapticSelection();
     setFilters((prev) => {
       const exists = prev.subcategories.includes(sub);
       const nextSubs = exists
@@ -349,6 +351,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   };
 
   const handleToggleBrand = (brand: string) => {
+    hapticSelection();
     setFilters((prev) => {
       const exists = prev.brands.includes(brand);
       const nextBrands = exists
@@ -360,6 +363,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   };
 
   const handleClearAllFilters = () => {
+    hapticLight();
     setFilters({
       subcategories: [],
       brands: [],

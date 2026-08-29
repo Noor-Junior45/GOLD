@@ -13,6 +13,7 @@ import {
 import { KolkataArea, SavedAddress } from '../types';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
 import { ACTIVE_SAVED_ADDRESS_KEY } from '../services/supabaseService';
+import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
 
 interface DeviceLocationPromptModalProps {
   isOpen: boolean;
@@ -34,6 +35,17 @@ export const DeviceLocationPromptModal: React.FC<DeviceLocationPromptModalProps>
 }) => {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+
+  // Drag down to dismiss on mobile
+  const {
+    handleTouchStart: handleSheetTouchStart,
+    handleTouchMove: handleSheetTouchMove,
+    handleTouchEnd: handleSheetTouchEnd,
+    dragStyle
+  } = useBottomSheetDismiss({
+    onClose,
+    disabled: !isOpen
+  });
 
   if (!isOpen) return null;
 
@@ -189,8 +201,19 @@ export const DeviceLocationPromptModal: React.FC<DeviceLocationPromptModalProps>
       {/* Bottom Sheet Container - Perfectly fitted for mobile phone screens */}
       <div
         id="device-location-prompt-sheet"
+        style={dragStyle}
         className="w-full max-w-lg bg-[#f8fafc] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200/90 animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[85vh] sm:max-h-[80vh] text-slate-900"
       >
+        {/* Drag Down Handle on Mobile */}
+        <div
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+          className="w-full flex flex-col items-center justify-center pt-2.5 pb-1.5 sm:hidden cursor-grab active:cursor-grabbing touch-none select-none"
+        >
+          <div className="w-12 h-1.5 bg-slate-300 rounded-full hover:bg-slate-400 transition-colors" />
+        </div>
+
         <div className="p-3.5 sm:p-5 space-y-3 sm:space-y-3.5 overflow-y-auto no-scrollbar pb-6 sm:pb-5">
           
           {/* Card 1: Current Location with Reddish Google Maps Pin */}

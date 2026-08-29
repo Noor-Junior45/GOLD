@@ -45,6 +45,8 @@ import { trackProductView } from '../../utils/analytics';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
 import { SEOHead } from '../SEOHead';
 import { shareProductDetails } from '../../utils/shareProduct';
+import { ZoomableImage } from '../ZoomableImage';
+import { useEdgeSwipeBack } from '../../hooks/useEdgeSwipeBack';
 
 interface ProductDetailPageProps {
   onAddToCart: (product: Product) => void;
@@ -322,6 +324,20 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     return product ? Number(product.rating_avg || 0) : 0;
   }, [reviews, product]);
 
+  const isConstructionCategory = (product?.category || '').toLowerCase().includes('construction') ||
+    (product?.subcategory || '').toLowerCase().includes('cement') ||
+    (product?.subcategory || '').toLowerCase().includes('tmt') ||
+    (product?.subcategory || '').toLowerCase().includes('waterproof') ||
+    (product?.subcategory || '').toLowerCase().includes('paint');
+  const catalogBackRoute = isConstructionCategory ? '/construction' : '/electrical';
+  const catalogBackTitle = isConstructionCategory ? 'Back to Construction Store' : 'Back to Electrical Store';
+
+  // Mobile edge swipe back gesture (declared before any early returns to satisfy React Hook rules)
+  useEdgeSwipeBack({
+    onBack: () => navigate(catalogBackRoute),
+    disabled: loading || !product
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f1f3f6] flex items-center justify-center p-8">
@@ -362,14 +378,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       </div>
     );
   }
-
-  const isConstructionCategory = (product.category || '').toLowerCase().includes('construction') ||
-    (product.subcategory || '').toLowerCase().includes('cement') ||
-    (product.subcategory || '').toLowerCase().includes('tmt') ||
-    (product.subcategory || '').toLowerCase().includes('waterproof') ||
-    (product.subcategory || '').toLowerCase().includes('paint');
-  const catalogBackRoute = isConstructionCategory ? '/construction' : '/electrical';
-  const catalogBackTitle = isConstructionCategory ? 'Back to Construction Store' : 'Back to Electrical Store';
 
   const currentImage =
     product.image_urls[selectedImageIndex] ||
@@ -501,14 +509,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               )}
 
-              {/* Main Product Image (Clean display with on-hover navigation arrows and zoom transitions) */}
+              {/* Main Product Image (Clean display with zoom gestures and on-hover navigation arrows) */}
               <div
-                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-4 group select-none"
+                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-2 group select-none"
               >
-                <img
+                <ZoomableImage
                   src={currentImage}
                   alt={product.name}
-                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-102"
+                  className="w-full h-full object-contain"
+                  containerClassName="w-full h-full"
+                  onSwipeLeft={() => {
+                    if (product.image_urls.length > 1) {
+                      setSelectedImageIndex((prev) => (prev + 1) % product.image_urls.length);
+                    }
+                  }}
+                  onSwipeRight={() => {
+                    if (product.image_urls.length > 1) {
+                      setSelectedImageIndex((prev) => (prev === 0 ? product.image_urls.length - 1 : prev - 1));
+                    }
+                  }}
                 />
 
                 {/* Left & Right on-image navigation buttons if multiple images exist */}
@@ -532,7 +551,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     </button>
 
                     {/* Image indicator pill */}
-                    <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                    <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs z-10">
                       {selectedImageIndex + 1} / {product.image_urls.length}
                     </div>
                   </>

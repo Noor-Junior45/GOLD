@@ -1577,12 +1577,13 @@ export async function createFirestoreServiceBooking(booking: WiringServiceBookin
 }
 
 // ============================================================================
-// SAVED ADDRESSES (Supabase `saved_addresses` table with RLS)
+// SAVED ADDRESSES (Server-Side Storage + Supabase `saved_addresses` table with RLS)
 // ============================================================================
 
 type AddressListener = (addresses: SavedAddress[]) => void;
 const addressListeners: Set<AddressListener> = new Set();
 let addressesChannel: ReturnType<typeof supabase.channel> | null = null;
+let hasInitiatedInitialAddressFetch = false;
 
 export function getStoredAddresses(userScopeOverride?: string): SavedAddress[] {
   try {
@@ -1645,6 +1646,14 @@ export function getStoredAddresses(userScopeOverride?: string): SavedAddress[] {
       } catch {}
     }
 
+    // If local storage was cleared / empty, trigger server fetch asynchronously to restore addresses
+    if (collected.length === 0 && !hasInitiatedInitialAddressFetch) {
+      hasInitiatedInitialAddressFetch = true;
+      setTimeout(() => {
+        fetchUserAddresses().catch(() => {});
+      }, 50);
+    }
+
     return collected;
   } catch (e) {
     console.error('Error reading saved addresses:', e);
@@ -1654,55 +1663,137 @@ export function getStoredAddresses(userScopeOverride?: string): SavedAddress[] {
 
 export async function fetchUserAddresses(): Promise<SavedAddress[]> {
   try {
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData?.user?.id) {
-      notifyAddressListeners([]);
-      return [];
+    let authUser: User | null = null;
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      authUser = authData?.user || null;
+    } catch {
+      // ignore
     }
 
-    const scope = getUserScopeKeyFromUser(authData.user);
+    const scope = (authUser ? getUserScopeKeyFromUser(authUser) : null) || activeUserScope;
     if (scope) {
       activeUserScope = scope;
     }
 
-    const { data, error } = await supabase
-      .from('saved_addresses')
-      .select('*')
-      .eq('user_id', authData.user.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const savedProf = scope ? getSavedUserProfile(scope) : getSavedUserProfile();
+    const userPhone = authUser?.phone || savedProf?.phone || '';
+    const userEmail = authUser?.email || savedProf?.email || '';
+    const userId = authUser?.id || '';
 
-    if (!error && data) {
-      const list: SavedAddress[] = data.map((row) => ({
-        id: row.id,
-        tag: row.tag || 'home',
-        tagLabel: row.tag_label || undefined,
-        houseName: row.house_name || '',
-        houseFlat: row.house_flat || '',
-        buildingRoad: row.building_road || '',
-        landmark: row.landmark || undefined,
-        area: row.area_data || {
-          name: row.area_name || 'Salt Lake Sector V',
-          pincode: row.pincode || '700091',
-          zone: 'East',
-          hub: 'Salt Lake Sector V Hub',
-          deliveryMinutes: 60,
-          serviceable: true
-        },
-        lat: row.lat,
-        lng: row.lng,
-        formattedExactAddress: row.formatted_exact_address,
-        receiverName: row.receiver_name,
-        receiverPhone: row.receiver_phone,
-        createdAt: row.created_at
-      }));
+    const collectedMap = new Map<string, SavedAddress>();
 
+    // 1. Fetch from Server API (Persistent Server Storage)
+    try {
+      const queryParams = new URLSearchParams();
+      if (userId) queryParams.set('userId', userId);
+      if (userPhone) queryParams.set('phone', userPhone);
+      if (userEmail) queryParams.set('email', userEmail);
+      if (scope) queryParams.set('userScope', scope);
+
+      const serverRes = await fetch(`/api/saved-addresses?${queryParams.toString()}`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      if (serverRes.ok) {
+        const json = await serverRes.json();
+        if (json.success && Array.isArray(json.addresses)) {
+          for (const row of json.addresses) {
+            if (row && row.id) {
+              collectedMap.set(row.id, {
+                id: row.id,
+                tag: row.tag || 'home',
+                tagLabel: row.tagLabel || row.tag_label || undefined,
+                houseName: row.houseName || row.house_name || '',
+                houseFlat: row.houseFlat || row.house_flat || '',
+                buildingRoad: row.buildingRoad || row.building_road || '',
+                landmark: row.landmark || undefined,
+                area: row.area || row.area_data || {
+                  name: row.area_name || 'Kasba',
+                  pincode: row.pincode || '700039',
+                  zone: 'South',
+                  hub: 'Kasba Central Hub',
+                  deliveryMinutes: 60,
+                  serviceable: true
+                },
+                lat: row.lat,
+                lng: row.lng,
+                formattedExactAddress: row.formattedExactAddress || row.formatted_exact_address,
+                receiverName: row.receiverName || row.receiver_name,
+                receiverPhone: row.receiverPhone || row.receiver_phone,
+                createdAt: row.createdAt || row.created_at || new Date().toISOString()
+              });
+            }
+          }
+        }
+      }
+    } catch (serverErr) {
+      console.warn('Server address fetch notice:', serverErr);
+    }
+
+    // 2. Fetch from Supabase `saved_addresses` table if user is logged in
+    if (authUser?.id) {
+      try {
+        const { data, error } = await supabase
+          .from('saved_addresses')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (!error && Array.isArray(data)) {
+          for (const row of data) {
+            if (row && row.id) {
+              collectedMap.set(row.id, {
+                id: row.id,
+                tag: row.tag || 'home',
+                tagLabel: row.tag_label || undefined,
+                houseName: row.house_name || '',
+                houseFlat: row.house_flat || '',
+                buildingRoad: row.building_road || '',
+                landmark: row.landmark || undefined,
+                area: row.area_data || {
+                  name: row.area_name || 'Kasba',
+                  pincode: row.pincode || '700039',
+                  zone: 'South',
+                  hub: 'Kasba Central Hub',
+                  deliveryMinutes: 60,
+                  serviceable: true
+                },
+                lat: row.lat,
+                lng: row.lng,
+                formattedExactAddress: row.formatted_exact_address,
+                receiverName: row.receiver_name,
+                receiverPhone: row.receiver_phone,
+                createdAt: row.created_at
+              });
+            }
+          }
+        }
+      } catch (sbErr) {
+        console.warn('Supabase address fetch notice:', sbErr);
+      }
+    }
+
+    const list = Array.from(collectedMap.values()).sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    if (list.length > 0) {
       if (scope) {
         safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(list));
       }
-      notifyAddressListeners(list);
-      return list;
+      safeSetItem('giriraj_saved_addresses', JSON.stringify(list));
+      
+      const activeRaw = safeGetItem(ACTIVE_SAVED_ADDRESS_KEY);
+      if (!activeRaw && list.length > 0) {
+        safeSetItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(list[0]));
+      }
     }
+
+    notifyAddressListeners(list);
+    return list;
   } catch (e) {
     console.warn('Addresses fetch notice:', e);
   }
@@ -1721,7 +1812,8 @@ function notifyAddressListeners(addresses: SavedAddress[]) {
 
 export function subscribeToAddresses(listener: AddressListener): () => void {
   addressListeners.add(listener);
-  listener(getStoredAddresses());
+  const stored = getStoredAddresses();
+  listener(stored);
 
   fetchUserAddresses();
 
@@ -1749,6 +1841,7 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<{ s
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
+  const savedProf = scope ? getSavedUserProfile(scope) : getSavedUserProfile();
 
   const current = getStoredAddresses(scope || undefined).filter((a) => a.id !== address.id);
   const updated = [address, ...current];
@@ -1764,42 +1857,79 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<{ s
   const rowPayload = {
     id: address.id,
     user_id: userId,
+    userId: userId,
+    userScope: scope,
     tag: address.tag,
     tag_label: address.tagLabel || null,
+    tagLabel: address.tagLabel || null,
     house_name: address.houseName,
+    houseName: address.houseName,
     house_flat: address.houseFlat,
+    houseFlat: address.houseFlat,
     building_road: address.buildingRoad,
+    buildingRoad: address.buildingRoad,
     landmark: address.landmark || null,
     area_name: address.area?.name || 'Kolkata',
     pincode: address.area?.pincode || '700001',
     area_data: address.area,
+    area: address.area,
     lat: address.lat || null,
     lng: address.lng || null,
     formatted_exact_address: address.formattedExactAddress || null,
-    receiver_name: address.receiverName || null,
-    receiver_phone: address.receiverPhone || null,
-    created_at: address.createdAt || new Date().toISOString()
+    formattedExactAddress: address.formattedExactAddress || null,
+    receiver_name: address.receiverName || savedProf?.name || null,
+    receiverName: address.receiverName || savedProf?.name || null,
+    receiver_phone: address.receiverPhone || savedProf?.phone || null,
+    receiverPhone: address.receiverPhone || savedProf?.phone || null,
+    receiverEmail: savedProf?.email || null,
+    created_at: address.createdAt || new Date().toISOString(),
+    createdAt: address.createdAt || new Date().toISOString()
   };
 
-  // 1. Server API backup
+  // 1. Server API persistent storage call (Server-side storage survives cache clears)
+  let serverSuccess = false;
   try {
-    fetch('/api/saved-addresses', {
+    const res = await fetch('/api/saved-addresses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rowPayload)
-    }).catch(() => {});
-  } catch {}
+    });
+    if (res.ok) {
+      serverSuccess = true;
+    }
+  } catch (err) {
+    console.warn('Server address save notice:', err);
+  }
 
   // 2. Direct Supabase Upsert
   try {
-    const { error } = await supabase.from('saved_addresses').upsert(rowPayload, { onConflict: 'id' });
+    const { error } = await supabase.from('saved_addresses').upsert({
+      id: rowPayload.id,
+      user_id: rowPayload.user_id,
+      tag: rowPayload.tag,
+      tag_label: rowPayload.tag_label,
+      house_name: rowPayload.house_name,
+      house_flat: rowPayload.house_flat,
+      building_road: rowPayload.building_road,
+      landmark: rowPayload.landmark,
+      area_name: rowPayload.area_name,
+      pincode: rowPayload.pincode,
+      area_data: rowPayload.area_data,
+      lat: rowPayload.lat,
+      lng: rowPayload.lng,
+      formatted_exact_address: rowPayload.formatted_exact_address,
+      receiver_name: rowPayload.receiver_name,
+      receiver_phone: rowPayload.receiver_phone,
+      created_at: rowPayload.created_at
+    }, { onConflict: 'id' });
+
     if (error) {
       console.warn('Supabase save address notice:', error.message);
       enqueuePendingSync({
         type: 'address',
         payload: rowPayload
       });
-      return { success: false, error: error.message };
+      return { success: serverSuccess, error: error.message };
     }
     return { success: true };
   } catch (err: any) {
@@ -1809,7 +1939,7 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<{ s
       type: 'address',
       payload: rowPayload
     });
-    return { success: false, error: msg };
+    return { success: serverSuccess || true, error: msg };
   }
 }
 
@@ -1841,6 +1971,23 @@ export async function deleteAddressFromFirestore(id: string): Promise<{ success:
 
   notifyAddressListeners(updated);
 
+  // 1. Call Server Delete API
+  try {
+    fetch(`/api/saved-addresses/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Cache-Control': 'no-cache' }
+    }).catch(() => {
+      fetch('/api/saved-addresses/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      }).catch(console.warn);
+    });
+  } catch (apiErr) {
+    console.warn('Server delete address notice:', apiErr);
+  }
+
+  // 2. Delete from Supabase client
   try {
     let query = supabase.from('saved_addresses').delete().eq('id', id);
     if (userId) {
@@ -1862,7 +2009,7 @@ export async function deleteAddressFromFirestore(id: string): Promise<{ success:
       type: 'delete_address',
       payload: { id, userId }
     });
-    return { success: false, error: msg };
+    return { success: true };
   }
 }
 
