@@ -1,4 +1,5 @@
 import { Order, WiringServiceBooking, ReceivedEmail } from '../types';
+import { API_BASE_URL } from '../lib/apiBase';
 
 export interface EmailSendResult {
   success: boolean;
@@ -38,7 +39,7 @@ export interface ReceivedEmailsResponse {
  */
 export async function getEmailServiceStatus(): Promise<EmailServiceStatus> {
   try {
-    const res = await fetch('/api/email-status');
+    const res = await fetch(`${API_BASE_URL}/api/email-status`);
     if (!res.ok) {
       return {
         configured: false,
@@ -70,7 +71,7 @@ export async function getEmailServiceStatus(): Promise<EmailServiceStatus> {
  */
 export async function getReceivedEmails(): Promise<ReceivedEmailsResponse> {
   try {
-    const res = await fetch('/api/received-emails');
+    const res = await fetch(`${API_BASE_URL}/api/received-emails`);
     if (!res.ok) {
       throw new Error(`HTTP error ${res.status}`);
     }
@@ -100,7 +101,7 @@ export async function sendContactInquiry(params: {
   orderId?: string;
 }): Promise<EmailSendResult> {
   try {
-    const res = await fetch('/api/contact-inquiry', {
+    const res = await fetch(`${API_BASE_URL}/api/contact-inquiry`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
@@ -125,7 +126,7 @@ export async function replyToReceivedEmail(
   customSubject?: string
 ): Promise<{ success: boolean; message: string; record?: ReceivedEmail }> {
   try {
-    const res = await fetch(`/api/received-emails/${id}/reply`, {
+    const res = await fetch(`${API_BASE_URL}/api/received-emails/${id}/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ replyText, subject: customSubject })
@@ -148,7 +149,7 @@ export async function updateReceivedEmailStatus(
   status: 'unread' | 'read' | 'archived'
 ): Promise<{ success: boolean; email?: ReceivedEmail }> {
   try {
-    const res = await fetch(`/api/received-emails/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/received-emails/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
@@ -164,7 +165,7 @@ export async function updateReceivedEmailStatus(
  */
 export async function deleteReceivedEmail(id: string): Promise<{ success: boolean }> {
   try {
-    const res = await fetch(`/api/received-emails/${id}`, {
+    const res = await fetch(`${API_BASE_URL}/api/received-emails/${id}`, {
       method: 'DELETE'
     });
     return await res.json();
@@ -184,7 +185,7 @@ export async function simulateInboundEmail(params?: {
   category?: 'quote' | 'support' | 'contractor' | 'general';
 }): Promise<{ success: boolean; message: string; email?: ReceivedEmail }> {
   try {
-    const res = await fetch('/api/received-emails/simulate-inbound', {
+    const res = await fetch(`${API_BASE_URL}/api/received-emails/simulate-inbound`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params || {})
@@ -251,7 +252,7 @@ export async function notifyOrderPlaced(
   message: string;
 }> {
   try {
-    const res = await fetch('/api/notify-order', {
+    const res = await fetch(`${API_BASE_URL}/api/notify-order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -301,7 +302,7 @@ export async function sendOrderConfirmationEmail(
   }
 
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetch(`${API_BASE_URL}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -341,7 +342,7 @@ export async function sendWiringBookingEmail(
   }
 
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetch(`${API_BASE_URL}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -373,7 +374,7 @@ export async function sendTestEmail(
   recipientName = 'Valued Customer'
 ): Promise<EmailSendResult> {
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetch(`${API_BASE_URL}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -407,7 +408,7 @@ export async function sendCustomEmail(params: {
   customerName?: string;
 }): Promise<EmailSendResult> {
   try {
-    const res = await fetch('/api/send-email', {
+    const res = await fetch(`${API_BASE_URL}/api/send-email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -76,7 +76,7 @@ export const Footer: React.FC<FooterProps> = () => {
                   id="footer-privacy-policy-link"
                 >
                   <span className="text-emerald-500">›</span>
-                  <span className="font-bold text-emerald-300">Privacy Policy</span>
+                  <span className="font-bold text-white">Privacy Policy</span>
                 </Link>
               </li>
 

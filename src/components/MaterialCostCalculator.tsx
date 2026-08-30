@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Product, CartItem } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
+import { API_BASE_URL } from '../lib/apiBase';
 
 interface MaterialCostCalculatorProps {
   products?: Product[];
@@ -312,7 +313,7 @@ export const MaterialCostCalculator: React.FC<MaterialCostCalculatorProps> = ({
     setIsAiLoading(true);
 
     try {
-      const response = await fetch('/api/gemini/estimate-materials', {
+      const response = await fetch(`${API_BASE_URL}/api/gemini/estimate-materials`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

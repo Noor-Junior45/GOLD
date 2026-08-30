@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Product, CartItem, KolkataArea, SavedAddress, Order, WiringServiceBooking, UserProfile } from './types';
 import { INITIAL_PRODUCTS } from './data/products';
 import { KOLKATA_AREAS } from './data/kolkataAreas';
@@ -51,10 +51,22 @@ import {
   setActiveUserScope
 } from './services/supabaseService';
 import { useVersionCheck } from './hooks/useVersionCheck';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { initPushNotifications } from './services/pushNotificationService';
+import { showToast } from './utils/toast';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Hide native splash screen once React component mounts
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      SplashScreen.hide().catch(() => {});
+    }
+  }, []);
 
   // Silent Background Version Check & Cache Invalidation (no popups, no blinking reloads)
   useVersionCheck({
@@ -308,6 +320,108 @@ export default function App() {
     };
   }, []);
 
+  // Deep Link Listener for Native Capacitor App (buildnow://product/:id, etc.)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const handleDeepUrl = (urlStr: string) => {
+      try {
+        if (!urlStr) return;
+
+        // Check if OAuth callback with tokens or auth code
+        if (urlStr.includes('#access_token') || urlStr.includes('?access_token') || urlStr.includes('code=')) {
+          // If Supabase redirected back via custom scheme (buildnow://login#access_token=...)
+          const hashIdx = urlStr.indexOf('#');
+          if (hashIdx !== -1) {
+            const hash = urlStr.substring(hashIdx + 1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (accessToken && refreshToken) {
+              supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              }).catch((e) => console.warn('Supabase setSession from deep link notice:', e));
+            }
+          }
+          navigate('/orders');
+          return;
+        }
+
+        let path = '';
+        if (urlStr.startsWith('buildnow://')) {
+          const raw = urlStr.replace('buildnow://', '');
+          path = raw.startsWith('/') ? raw : `/${raw}`;
+        } else {
+          const parsed = new URL(urlStr);
+          path = parsed.pathname;
+        }
+
+        const cleanPath = path.replace(/\/+$/, '');
+        const segments = cleanPath.split('/').filter(Boolean);
+
+        // Case 1: Product deep link e.g. buildnow://product/:id
+        if (segments.includes('product')) {
+          const prodIdx = segments.indexOf('product');
+          const productId = segments[prodIdx + 1];
+          if (productId) {
+            navigate(`/product/${encodeURIComponent(productId)}`);
+            return;
+          }
+        }
+
+        // Case 2: Standard route deep links (e.g. buildnow://electrical, buildnow://orders, etc.)
+        if (segments.length > 0) {
+          navigate(`/${segments.join('/')}`);
+        }
+      } catch (err) {
+        console.warn('Error handling deep link URL:', err, urlStr);
+      }
+    };
+
+    // Listen for runtime deep link events (app already open or resumed from background)
+    const listenerPromise = CapApp.addListener('appUrlOpen', (data) => {
+      handleDeepUrl(data.url);
+    });
+
+    // Check cold-start launch URL
+    CapApp.getLaunchUrl()
+      .then((launchData) => {
+        if (launchData?.url) {
+          handleDeepUrl(launchData.url);
+        }
+      })
+      .catch((err) => console.warn('Capacitor getLaunchUrl notice:', err));
+
+    return () => {
+      listenerPromise.then((handle) => handle.remove()).catch(() => {});
+    };
+  }, [navigate]);
+
+  // Initialize @capacitor/push-notifications for real-time order status updates & alerts
+  useEffect(() => {
+    initPushNotifications((targetPath, orderId) => {
+      if (orderId) {
+        navigate(`/orders?orderId=${encodeURIComponent(orderId)}`);
+      } else if (targetPath) {
+        navigate(targetPath);
+      }
+    }).catch((err) => console.warn('Push notification init notice:', err));
+
+    const handleForegroundPush = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { title, body } = customEvent.detail || {};
+      if (title) {
+        showToast(`${title}: ${body || 'Order status update received'}`, 'success', 5000);
+      }
+    };
+
+    window.addEventListener('giriraj:order-push-received', handleForegroundPush);
+    return () => {
+      window.removeEventListener('giriraj:order-push-received', handleForegroundPush);
+    };
+  }, [navigate]);
+
   // Check device location permission on app open; if not granted/closed, show bottom popup
   useEffect(() => {
     try {
@@ -518,13 +632,83 @@ export default function App() {
     }
   };
 
+  const isAuthenticated = Boolean(userProfile?.id || userProfile?.email || userProfile?.phone || userPhone);
+
+  const handleAuthSuccess = (phone: string, name: string, email?: string) => {
+    const photo = safeGetItem('giriraj_user_photo') || undefined;
+    const prof: UserProfile = {
+      id: userProfile?.id,
+      phone: phone || '',
+      name: name || '',
+      email: email || '',
+      emailVerified: Boolean(email),
+      photoURL: photo,
+      dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
+    };
+    setUserProfile(prof);
+    setUserPhone(phone || null);
+    setUserName(name || '');
+    navigate('/');
+  };
+
+  // 1. If auth session is still checking on app launch, show brand loading screen
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <SEOHead />
+        <div className="flex flex-col items-center space-y-3 animate-pulse">
+          <img
+            src="/buildnow.png"
+            alt="BuildNow Logo"
+            className="w-16 h-16 object-contain rounded-2xl shadow-sm border border-slate-200 bg-white p-1"
+          />
+          <div className="text-3xl font-bold font-bodoni flex items-center justify-center">
+            <span className="text-slate-950">Build</span>
+            <span className="text-[#00875a]">Now</span>
+          </div>
+          <p className="text-xs text-slate-400 font-semibold">Starting secure session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. If user is NOT logged in, require login first before accessing store & features
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
+        <SEOHead />
+        <main className="flex-1">
+          <Routes>
+            {/* Standalone Legal & Policy Pages */}
+            <Route path="/about" element={<LegalView onBack={() => navigate('/login')} type="about" />} />
+            <Route path="/about-us" element={<LegalView onBack={() => navigate('/login')} type="about" />} />
+            <Route path="/faqs" element={<LegalView onBack={() => navigate('/login')} type="faqs" />} />
+            <Route path="/faq" element={<LegalView onBack={() => navigate('/login')} type="faqs" />} />
+            <Route path="/refund-policy" element={<LegalView onBack={() => navigate('/login')} type="refund" />} />
+            <Route path="/refunds" element={<LegalView onBack={() => navigate('/login')} type="refund" />} />
+            <Route path="/shipping-policy" element={<LegalView onBack={() => navigate('/login')} type="shipping" />} />
+            <Route path="/shipping" element={<LegalView onBack={() => navigate('/login')} type="shipping" />} />
+            <Route path="/privacy" element={<LegalView onBack={() => navigate('/login')} type="privacy" />} />
+            <Route path="/privacy-policy" element={<LegalView onBack={() => navigate('/login')} type="privacy" />} />
+            <Route path="/terms" element={<LegalView onBack={() => navigate('/login')} type="terms" />} />
+            <Route path="/terms-of-service" element={<LegalView onBack={() => navigate('/login')} type="terms" />} />
+            <Route path="/reset-password" element={<ResetPassword onOpenAuth={() => navigate('/login')} />} />
+            
+            {/* All other routes (home, catalog, cart, profile, etc.) require login */}
+            <Route path="*" element={<LoginPage onAuthSuccess={handleAuthSuccess} />} />
+          </Routes>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
       {/* Dynamic SEO Meta & Structured Data Manager */}
       <SEOHead />
       
-      {/* Top Header - Hidden when viewing profile or login pages */}
-      {location.pathname !== '/profile' && location.pathname !== '/login' && location.pathname !== '/auth' && (
+      {/* Top Header - Hidden when viewing profile */}
+      {location.pathname !== '/profile' && (
         <Header
           currentArea={currentArea}
           activeAddress={activeSavedAddress}
@@ -538,7 +722,7 @@ export default function App() {
           userName={userName}
           userPhoto={userProfile?.photoURL}
           userProfile={userProfile}
-          onOpenAuth={() => navigate('/login')}
+          onOpenAuth={() => navigate('/profile')}
           onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -731,53 +915,9 @@ export default function App() {
           {/* PASSWORD RESET */}
           <Route path="/reset-password" element={<ResetPassword onOpenAuth={() => navigate('/login')} />} />
 
-          {/* DEDICATED LOGIN / AUTH PAGE */}
-          <Route
-            path="/login"
-            element={
-              <LoginPage
-                onAuthSuccess={(phone, name, email) => {
-                  const photo = safeGetItem('giriraj_user_photo') || undefined;
-                  const prof: UserProfile = {
-                    id: userProfile?.id,
-                    phone: phone || '',
-                    name: name || '',
-                    email: email || '',
-                    emailVerified: Boolean(email),
-                    photoURL: photo,
-                    dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
-                  };
-                  setUserProfile(prof);
-                  setUserPhone(phone || null);
-                  setUserName(name || '');
-                  navigate('/profile');
-                }}
-              />
-            }
-          />
-          <Route
-            path="/auth"
-            element={
-              <LoginPage
-                onAuthSuccess={(phone, name, email) => {
-                  const photo = safeGetItem('giriraj_user_photo') || undefined;
-                  const prof: UserProfile = {
-                    id: userProfile?.id,
-                    phone: phone || '',
-                    name: name || '',
-                    email: email || '',
-                    emailVerified: Boolean(email),
-                    photoURL: photo,
-                    dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
-                  };
-                  setUserProfile(prof);
-                  setUserPhone(phone || null);
-                  setUserName(name || '');
-                  navigate('/profile');
-                }}
-              />
-            }
-          />
+          {/* AUTH REDIRECTS WHEN ALREADY LOGGED IN */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/auth" element={<Navigate to="/" replace />} />
 
           {/* HOME / DEFAULT ROUTE - MODERN WHOLESALE B2B & B2C HOME */}
           <Route

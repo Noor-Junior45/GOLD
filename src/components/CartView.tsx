@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Zap,
   Trash2,
@@ -99,6 +100,7 @@ export const CartView: React.FC<CartViewProps> = ({
   onContinueShopping,
   onAddToCart
 }) => {
+  const navigate = useNavigate();
   // Active Category Filter Tab
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
@@ -604,7 +606,7 @@ export const CartView: React.FC<CartViewProps> = ({
               <span>Electrical Items</span>
             </button>
             <button
-              onClick={() => window.location.href = '/construction'}
+              onClick={() => navigate('/construction')}
               className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold py-3 px-4 rounded-xl shadow-2xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-slate-200 whitespace-nowrap"
             >
               <Building2 className="w-4 h-4 text-slate-700 shrink-0" />
@@ -1679,7 +1681,7 @@ export const CartView: React.FC<CartViewProps> = ({
                   if (onOpenAuth) {
                     onOpenAuth();
                   } else {
-                    window.location.href = '/login';
+                    navigate('/login');
                   }
                 }}
                 className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black py-3.5 px-6 rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"

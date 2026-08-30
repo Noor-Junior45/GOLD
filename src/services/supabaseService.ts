@@ -1,9 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
 import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
 import { showToast } from '../utils/toast';
+import { API_BASE_URL } from '../lib/apiBase';
 
 // Offline Sync Queue Types & Constants
 export interface PendingSyncItem {
@@ -386,13 +388,18 @@ export async function resetPasswordForEmail(
 export async function signInWithGoogle(): Promise<{ error: Error | null; url?: string | null }> {
   try {
     const isIframe = typeof window !== 'undefined' && window.self !== window.top;
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const isNative = Capacitor.isNativePlatform();
+    
+    // In native Android APK, use custom app scheme or web origin for Supabase OAuth callback
+    const redirectTo = isNative
+      ? 'buildnow://login'
+      : (typeof window !== 'undefined' ? window.location.origin : undefined);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: isIframe,
+        skipBrowserRedirect: isIframe || isNative,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent'
@@ -405,11 +412,16 @@ export async function signInWithGoogle(): Promise<{ error: Error | null; url?: s
       return { error };
     }
 
-    if (isIframe && data?.url) {
-      // In an iframe preview (like AI Studio canvas), open in a new window to bypass iframe 403 security blocks
-      const authWindow = window.open(data.url, '_blank');
-      if (!authWindow) {
-        window.location.href = data.url;
+    if (data?.url) {
+      if (isIframe) {
+        // In an iframe preview (like AI Studio canvas), open in a new window to bypass iframe 403 security blocks
+        const authWindow = window.open(data.url, '_blank');
+        if (!authWindow) {
+          window.location.href = data.url;
+        }
+      } else if (isNative) {
+        // In native Android WebView, open in external device browser (Chrome) for Google OAuth compliance
+        window.open(data.url, '_system');
       }
     }
 
@@ -598,7 +610,7 @@ export async function syncUserProfileToSupabase(
 
   // 1. Also sync to server API backup
   try {
-    fetch('/api/user-profile', {
+    fetch(`${API_BASE_URL}/api/user-profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -1127,7 +1139,7 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
   // 1. Submit through the Idempotent & Validated Server Pipeline
   try {
     const idempotencyKey = `idemp_${order.id}_${order.totalAmount}`;
-    const apiRes = await fetch('/api/order', {
+    const apiRes = await fetch(`${API_BASE_URL}/api/order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1399,7 +1411,7 @@ export async function deleteFirestoreOrder(orderId: string): Promise<boolean> {
 
   // 3. Call Server Backend API to delete with elevated DB permissions
   try {
-    fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+    fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(orderId)}`, {
       method: 'DELETE',
       headers: { 'Cache-Control': 'no-cache' }
     }).catch((apiErr) => console.warn('Server order delete API notice:', apiErr));
@@ -1468,12 +1480,12 @@ export async function clearAllUserOrders(): Promise<boolean> {
       if (user?.email) queryParams.set('email', user.email);
       if (user?.phone) queryParams.set('phone', user.phone);
 
-      fetch(`/api/orders?${queryParams.toString()}`, {
+      fetch(`${API_BASE_URL}/api/orders?${queryParams.toString()}`, {
         method: 'DELETE',
         headers: { 'Cache-Control': 'no-cache' }
       }).catch(() => {
         // Fallback POST
-        fetch('/api/orders/clear', {
+        fetch(`${API_BASE_URL}/api/orders/clear`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1546,7 +1558,7 @@ export async function createFirestoreServiceBooking(booking: WiringServiceBookin
 
   // 1. Server API backup call
   try {
-    fetch('/api/service-bookings', {
+    fetch(`${API_BASE_URL}/api/service-bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -1691,7 +1703,7 @@ export async function fetchUserAddresses(): Promise<SavedAddress[]> {
       if (userEmail) queryParams.set('email', userEmail);
       if (scope) queryParams.set('userScope', scope);
 
-      const serverRes = await fetch(`/api/saved-addresses?${queryParams.toString()}`, {
+      const serverRes = await fetch(`${API_BASE_URL}/api/saved-addresses?${queryParams.toString()}`, {
         headers: { 'Cache-Control': 'no-cache' }
       });
       if (serverRes.ok) {
@@ -1889,7 +1901,7 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<{ s
   // 1. Server API persistent storage call (Server-side storage survives cache clears)
   let serverSuccess = false;
   try {
-    const res = await fetch('/api/saved-addresses', {
+    const res = await fetch(`${API_BASE_URL}/api/saved-addresses`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rowPayload)
@@ -1973,11 +1985,11 @@ export async function deleteAddressFromFirestore(id: string): Promise<{ success:
 
   // 1. Call Server Delete API
   try {
-    fetch(`/api/saved-addresses/${encodeURIComponent(id)}`, {
+    fetch(`${API_BASE_URL}/api/saved-addresses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers: { 'Cache-Control': 'no-cache' }
     }).catch(() => {
-      fetch('/api/saved-addresses/delete', {
+      fetch(`${API_BASE_URL}/api/saved-addresses/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })

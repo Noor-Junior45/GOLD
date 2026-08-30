@@ -18,6 +18,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { API_BASE_URL } from '../lib/apiBase';
 
 interface Message {
   id: string;
@@ -95,7 +96,7 @@ export const HelpCenterChat: React.FC<HelpCenterChatProps> = ({ userProfile }) =
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/gemini/support-chat', {
+      const response = await fetch(`${API_BASE_URL}/api/gemini/support-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -134,9 +134,9 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           
           <div className="relative mx-auto w-20 h-20 mb-3 rounded-2xl bg-white p-2.5 shadow-xl flex items-center justify-center border-2 border-amber-400/30">
             <img
-              src="https://i.imgur.com/tGG9UN0.png"
+              src="/buildnow.png"
               alt="BuildNow App"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain rounded-xl"
             />
             <div className="absolute -bottom-1.5 -right-1.5 bg-amber-400 text-slate-950 p-1 rounded-full shadow-md">
               <Download className="w-3.5 h-3.5" />

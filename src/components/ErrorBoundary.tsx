@@ -25,13 +25,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
-    // Unregister service workers if broken cache was cause
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((reg) => reg.unregister());
-      });
+    // Clear error boundary state
+    this.setState({ hasError: false, error: null });
+    // If in browser, navigate home cleanly
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+      window.dispatchEvent(new PopStateEvent('popstate'));
     }
-    window.location.href = '/';
   };
 
   public override render() {

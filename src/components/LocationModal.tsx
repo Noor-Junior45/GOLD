@@ -34,6 +34,7 @@ import {
   ACTIVE_SAVED_ADDRESS_KEY
 } from '../services/supabaseService';
 import { showToast } from '../utils/toast';
+import { API_BASE_URL } from '../lib/apiBase';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -519,7 +520,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       try {
         // 1. Fetch from Google Maps Platform Places / Geocoding endpoint
         const response = await fetch(
-          `/api/maps/places-autocomplete?input=${encodeURIComponent(q)}`,
+          `${API_BASE_URL}/api/maps/places-autocomplete?input=${encodeURIComponent(q)}`,
           {
             signal: controller.signal
           }
@@ -576,7 +577,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     // If Google Maps Place ID exists but coords are not yet present, resolve place details
     if (result.placeId && (!lat || !lng)) {
       try {
-        const detRes = await fetch(`/api/maps/place-details?placeId=${encodeURIComponent(result.placeId)}`);
+        const detRes = await fetch(`${API_BASE_URL}/api/maps/place-details?placeId=${encodeURIComponent(result.placeId)}`);
         if (detRes.ok) {
           const detData = await detRes.json();
           if (detData.success && detData.lat && detData.lng) {

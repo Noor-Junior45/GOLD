@@ -1,0 +1,21 @@
+# Robots.txt for Giriraj Power
+# https://girirajpower.com (and all associated domains)
+
+User-agent: *
+Allow: /
+Allow: /electrical
+Allow: /construction
+Allow: /services
+Allow: /terms/*
+Allow: /product/*
+
+# Disallow private user admin & profile routes from crawling
+Disallow: /admin
+Disallow: /checkout
+Disallow: /order-success
+
+# Crawl Delay
+Crawl-delay: 1
+
+# Sitemaps
+Sitemap: /sitemap.xml

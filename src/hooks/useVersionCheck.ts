@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CLIENT_BUILD_ID, APP_VERSION, ServerVersionInfo } from '../version';
+import { API_BASE_URL } from '../lib/apiBase';
 
 export interface UseVersionCheckOptions {
   /** Check interval in milliseconds (default: 45000 / 45s) */
@@ -86,7 +87,7 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}): VersionCh
       setError(null);
 
       // Cache buster to query fresh server version info
-      const response = await fetch(`/api/version?t=${now}`, {
+      const response = await fetch(`${API_BASE_URL}/api/version?t=${now}`, {
         method: 'GET',
         cache: 'no-store',
         headers: {

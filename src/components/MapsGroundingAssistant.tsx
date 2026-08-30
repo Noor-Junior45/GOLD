@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, MapPin, Send, ExternalLink, User, RefreshCw, X } from 'lucide-react';
 import { KolkataArea } from '../types';
+import { API_BASE_URL } from '../lib/apiBase';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -44,7 +45,7 @@ export const MapsGroundingAssistant: React.FC<MapsGroundingAssistantProps> = ({
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/ai-assistant', {
+      const res = await fetch(`${API_BASE_URL}/api/ai-assistant`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { requestPushNotificationPermission } from '../../services/pushNotificationService';
 
 interface NotificationsSubPageProps {
   mobileAlerts: boolean;
@@ -55,11 +56,11 @@ export const NotificationsSubPage: React.FC<NotificationsSubPageProps> = ({
               role="switch"
               aria-checked={mobileAlerts}
               aria-label="Toggle Mobile push notifications"
-              onClick={() => {
+              onClick={async () => {
                 const nextState = !mobileAlerts;
                 onToggleMobileAlerts(nextState);
-                if (nextState && 'Notification' in window && Notification.permission !== 'granted') {
-                  Notification.requestPermission().catch(() => {});
+                if (nextState) {
+                  await requestPushNotificationPermission().catch(() => {});
                 }
               }}
               className={`relative inline-flex h-[32px] w-[58px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
