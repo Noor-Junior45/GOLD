@@ -51,7 +51,83 @@ export interface WiringServiceBooking {
   createdAt: string;
 }
 
-export type OrderStatus = 'pending' | 'accepted' | 'packing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+export type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'accepted'
+  | 'packing'
+  | 'packed'
+  | 'shipped'
+  | 'out_for_delivery'
+  | 'near_destination'
+  | 'delivered'
+  | 'failed'
+  | 'cancelled';
+
+export type DeliveryStatus =
+  | 'unassigned'
+  | 'assigned'
+  | 'picked_up'
+  | 'out_for_delivery'
+  | 'near_destination'
+  | 'delivered'
+  | 'failed'
+  | 'returned';
+
+export interface DeliveryPartner {
+  id?: string;
+  name: string;
+  phone: string;
+  vehicle_type?: 'bike' | 'scooter' | 'van' | 'tempo' | 'auto' | string;
+  vehicleType?: string;
+  vehicle_number?: string;
+  vehicleNumber?: string;
+  rating?: number;
+  total_completed?: number;
+  totalCompleted?: number;
+  is_active?: boolean;
+  avatar_url?: string | null;
+  currentHub?: string;
+}
+
+export interface ProofOfDelivery {
+  method?: 'otp' | 'photo' | 'signature' | 'recipient_name' | 'contactless' | string;
+  recipient_name?: string;
+  otp_code?: string;
+  photo_url?: string;
+  signature_note?: string;
+  notes?: string;
+  collected_at?: string;
+}
+
+export interface DeliveryRecord {
+  id?: string;
+  order_id?: string;
+  delivery_partner_id?: string | null;
+  status?: DeliveryStatus;
+  assigned_at?: string | null;
+  picked_up_at?: string | null;
+  out_for_delivery_at?: string | null;
+  near_destination_at?: string | null;
+  delivered_at?: string | null;
+  estimated_delivery_at?: string | null;
+  delivery_notes?: string | null;
+  proof_of_delivery?: ProofOfDelivery | null;
+  delivery_partner?: DeliveryPartner | null;
+}
+
+export interface DeliveryTrackingEvent {
+  id: string;
+  order_id: string;
+  delivery_id?: string;
+  stage: string;
+  title: string;
+  description?: string;
+  customer_message?: string;
+  actor?: 'admin' | 'delivery_partner' | 'system' | string;
+  location_name?: string;
+  created_at: string;
+}
 
 export interface Order {
   id: string;
@@ -88,21 +164,31 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   placed_at?: string;
+  confirmed_at?: string;
   packed_at?: string;
+  shipped_at?: string;
   out_for_delivery_at?: string;
+  near_destination_at?: string;
   delivered_at?: string;
+  cancelled_at?: string;
+  cancel_reason?: string;
+  cancellation_reason?: string;
   placedAt?: string;
+  confirmedAt?: string;
   packedAt?: string;
+  shippedAt?: string;
   outForDeliveryAt?: string;
+  nearDestinationAt?: string;
   deliveredAt?: string;
+  cancelledAt?: string;
+  estimated_delivery_at?: string;
   estimatedDeliveryTimestamp: number;
-  deliveryPartner?: {
-    name: string;
-    phone: string;
-    vehicleNumber: string;
-    currentHub: string;
-  };
+  deliveryPartner?: DeliveryPartner;
+  delivery?: DeliveryRecord;
+  trackingEvents?: DeliveryTrackingEvent[];
   notes?: string;
+  trackingNumber?: string;
+  orderNumber?: string;
 }
 
 export interface KolkataArea {

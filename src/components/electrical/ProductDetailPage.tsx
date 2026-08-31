@@ -235,7 +235,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   });
 
   const cartQty = product
-    ? (cartItems.find((i) => String(i.product.id) === String(product.id))?.quantity || 0)
+    ? cartItems
+        .filter((i) => String(i.product.id) === String(product.id))
+        .reduce((acc, it) => acc + (it.quantity || 0), 0)
     : 0;
 
   // Zoom Handler

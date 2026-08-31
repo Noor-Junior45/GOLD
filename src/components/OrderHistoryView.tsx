@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Package,
+  PackageCheck,
   MapPin,
   ShoppingBag,
   Phone,
@@ -12,6 +13,7 @@ import {
   CheckCircle2,
   Clock,
   Truck,
+  Navigation,
   CreditCard,
   Banknote,
   Download,
@@ -60,6 +62,14 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
   });
   const [hoverRating, setHoverRating] = useState<{ orderId: string; star: number } | null>(null);
 
+  const getOrderDisplayNumber = (order: Order): string => {
+    if (order.trackingNumber) return order.trackingNumber;
+    if (order.orderNumber) return order.orderNumber;
+    if (order.id.startsWith('GP-')) return order.id;
+    if (order.id.length > 10) return `GP-${order.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+    return order.id;
+  };
+
   const handleRate = (orderId: string, star: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setRatings((prev) => {
@@ -103,7 +113,10 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const matchesId = String(order.id).toLowerCase().includes(query);
+        const matchesId =
+          String(order.id).toLowerCase().includes(query) ||
+          (order.trackingNumber || '').toLowerCase().includes(query) ||
+          (order.orderNumber || '').toLowerCase().includes(query);
         const matchesItems = order.items.some((item) =>
           (item.product?.name || '').toLowerCase().includes(query) ||
           (item.product?.brand || '').toLowerCase().includes(query)
@@ -173,24 +186,45 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const statusNorm = (status || '').toLowerCase();
+    switch (statusNorm) {
       case 'delivered':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800">
             Delivered
           </span>
         );
+      case 'near_destination':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-900 animate-pulse border border-emerald-200">
+            Near Destination
+          </span>
+        );
       case 'out_for_delivery':
+      case 'shipped':
+      case 'picked_up':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-800 animate-pulse">
             Out for Delivery
           </span>
         );
+      case 'packed':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-900 border border-purple-200">
+            Packed
+          </span>
+        );
       case 'packing':
-      case 'accepted':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900">
-            Packing / Confirmed
+            Packing
+          </span>
+        );
+      case 'confirmed':
+      case 'accepted':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-800">
+            Confirmed
           </span>
         );
       case 'cancelled':
@@ -199,13 +233,71 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
             Cancelled
           </span>
         );
+      case 'pending':
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800">
-            {status.replace('_', ' ')}
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200/60">
+            Pending
           </span>
         );
     }
+  };
+
+  // Render Confirmation Modal for Order Deletion
+  const renderDeleteOrderModal = () => {
+    if (!orderToDelete) return null;
+
+    const isSingleProduct = orderToDelete.items && orderToDelete.items.length === 1;
+    const singleProductName = isSingleProduct
+      ? orderToDelete.items[0]?.product?.name || (orderToDelete.items[0] as any)?.product_name || 'Electrical Item'
+      : '';
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <div className="text-center space-y-1">
+            <h3 className="text-base font-black text-slate-900 line-clamp-2">
+              {isSingleProduct
+                ? `Delete "${singleProductName}"?`
+                : `Delete Order #${getOrderDisplayNumber(orderToDelete)}?`}
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {isSingleProduct
+                ? 'Are you sure you want to delete this item from your order history? This action cannot be undone.'
+                : `Are you sure you want to delete this order containing ${orderToDelete.items.length} items from your history? This action cannot be undone.`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setOrderToDelete(null)}
+              disabled={Boolean(deletingOrderId)}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteSingleOrder(orderToDelete)}
+              disabled={Boolean(deletingOrderId)}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              {deletingOrderId === orderToDelete.id ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <span>Delete Order</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // =========================================================================
@@ -240,7 +332,30 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
 
     const placedTimestamp = formatDateTime(selectedOrder.placed_at || selectedOrder.placedAt || selectedOrder.createdAt);
     const packedTimestamp = formatDateTime(selectedOrder.packed_at || selectedOrder.packedAt) || (isDelivered || isOutForDelivery ? placedTimestamp : null);
-    const deliveredTimestamp = formatDateTime(selectedOrder.delivered_at || selectedOrder.deliveredAt);
+    const deliveredTimestamp = formatDateTime(selectedOrder.delivered_at || selectedOrder.deliveredAt || selectedOrder.delivery?.delivered_at);
+
+    // Dynamic ETA Calculation
+    const etaTimestamp = selectedOrder.delivery?.estimated_delivery_at
+      ? new Date(selectedOrder.delivery.estimated_delivery_at).getTime()
+      : selectedOrder.estimated_delivery_at
+      ? new Date(selectedOrder.estimated_delivery_at).getTime()
+      : selectedOrder.estimatedDeliveryTimestamp || (selectedOrder.createdAt ? new Date(selectedOrder.createdAt).getTime() + 3600000 : Date.now() + 3600000);
+
+    const remainingMinutes = Math.max(0, Math.round((etaTimestamp - Date.now()) / 60000));
+    const isPastEta = Date.now() > etaTimestamp;
+
+    const etaScheduleText = isDelivered && deliveredTimestamp
+      ? `Delivered on ${deliveredTimestamp}`
+      : isCancelled
+      ? 'Order Cancelled'
+      : isPastEta
+      ? 'Arriving shortly • Express delivery'
+      : remainingMinutes > 0
+      ? `Expected delivery in ${remainingMinutes} mins`
+      : 'Arriving momentarily';
+
+    const rawPartner = selectedOrder.delivery?.delivery_partner || selectedOrder.deliveryPartner;
+    const partner = rawPartner && rawPartner.name && !rawPartner.name.toLowerCase().includes('bikash') ? rawPartner : undefined;
 
     // Items and Financial Calculations
     const itemsSubtotal = selectedOrder.subtotal || selectedOrder.itemTotal || selectedOrder.items.reduce((sum, item) => {
@@ -303,7 +418,7 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="font-mono text-sm font-black text-slate-900">
-                Order #{selectedOrder.id}
+                Order #{getOrderDisplayNumber(selectedOrder)}
               </span>
               {getStatusBadge(selectedOrder.status)}
             </div>
@@ -441,16 +556,45 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Delivery Schedule</div>
             <div className="font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-blue-600" />
-              <span>
-                {isDelivered && deliveredTimestamp
-                  ? `Delivered on ${deliveredTimestamp}`
-                  : isCancelled
-                  ? 'Order Cancelled'
-                  : '60-Minute Express Delivery'}
-              </span>
+              <span>{etaScheduleText}</span>
             </div>
           </div>
         </div>
+
+        {/* Assigned Delivery Rider (if assigned by delivery app) */}
+        {partner && partner.name && !isCancelled && (
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/70">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                <Truck className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-900">{partner.name}</span>
+                  {partner.rating && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-1 rounded border border-amber-200">
+                      <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                      <span>{partner.rating}</span>
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500 truncate">
+                  Assigned Rider {partner.vehicleNumber || partner.vehicle_number ? `• ${partner.vehicleNumber || partner.vehicle_number}` : ''}
+                </div>
+              </div>
+            </div>
+
+            {partner.phone && (
+              <a
+                href={`tel:${partner.phone}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 active:scale-95 transition-all shrink-0"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Call Partner</span>
+              </a>
+            )}
+          </div>
+        )}
 
         {/* 5. Process of Delivery with Time & Date Stamp */}
         <div className="pt-3 border-t border-slate-100 space-y-2">
@@ -596,6 +740,9 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
             <span>Get Help</span>
           </a>
         </div>
+
+        {/* Confirmation Modal for Order Deletion */}
+        {renderDeleteOrderModal()}
       </div>
     );
   }
@@ -807,7 +954,7 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
                           {/* Beside Product Image: Product Name & Delivered Date / Canceled Message (NO PRICE) */}
                           <div className="min-w-0 flex-1">
                             <h3 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
-                              {itemsName || `Order #${order.id}`}
+                              {itemsName || `Order #${getOrderDisplayNumber(order)}`}
                             </h3>
 
                             {/* Delivered date or canceled message or in-transit status */}
@@ -824,12 +971,62 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
                                   <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                                   <span>Cancelled</span>
                                 </span>
-                              ) : (
-                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">
-                                  <Truck className="w-3.5 h-3.5 text-blue-600 animate-pulse shrink-0" />
-                                  <span>Out for Delivery • Expected in 60 mins</span>
-                                </span>
-                              )}
+                              ) : (() => {
+                                const rawSt = (order.status || 'pending').toLowerCase();
+                                const delivSt解决 = (order.delivery?.status || '').toLowerCase();
+
+                                if (rawSt === 'near_destination' || delivSt解决 === 'near_destination') {
+                                  return (
+                                    <span className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                                      <Navigation className="w-3.5 h-3.5 text-emerald-600 animate-pulse shrink-0" />
+                                      <span>Near Destination</span>
+                                    </span>
+                                  );
+                                }
+                                if (
+                                  rawSt === 'out_for_delivery' ||
+                                  rawSt === 'shipped' ||
+                                  delivSt解决 === 'out_for_delivery' ||
+                                  delivSt解决 === 'picked_up'
+                                ) {
+                                  return (
+                                    <span className="text-xs font-bold text-blue-700 flex items-center gap-1">
+                                      <Truck className="w-3.5 h-3.5 text-blue-600 animate-pulse shrink-0" />
+                                      <span>Out for Delivery</span>
+                                    </span>
+                                  );
+                                }
+                                if (rawSt === 'packed' || Boolean(order.packed_at || order.packedAt)) {
+                                  return (
+                                    <span className="text-xs font-bold text-purple-800 flex items-center gap-1">
+                                      <PackageCheck className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                                      <span>Packed</span>
+                                    </span>
+                                  );
+                                }
+                                if (rawSt === 'packing') {
+                                  return (
+                                    <span className="text-xs font-bold text-amber-700 flex items-center gap-1">
+                                      <Package className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <span>Packing</span>
+                                    </span>
+                                  );
+                                }
+                                if (rawSt === 'confirmed' || rawSt === 'accepted') {
+                                  return (
+                                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                      <span>Confirmed</span>
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="text-xs font-bold text-amber-600 flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    <span>Pending</span>
+                                  </span>
+                                );
+                              })()}
 
                               {order.items.length > 1 && (
                                 <span className="text-[11px] text-slate-400 font-semibold">
@@ -892,48 +1089,7 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
       )}
 
       {/* Confirmation Modal: Delete Single Order */}
-      {orderToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div className="text-center space-y-1">
-              <h3 className="text-base font-black text-slate-900">
-                Delete Order #{orderToDelete.id}?
-              </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Are you sure you want to delete this order from your history? This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setOrderToDelete(null)}
-                disabled={Boolean(deletingOrderId)}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteSingleOrder(orderToDelete)}
-                disabled={Boolean(deletingOrderId)}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                {deletingOrderId === orderToDelete.id ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <span>Delete Order</span>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderDeleteOrderModal()}
 
       {/* Confirmation Modal: Clear All Orders */}
       {confirmClearAll && (

@@ -10,6 +10,17 @@ export function registerServiceWorker() {
     return;
   }
 
+  // In development/sandbox preview mode, unregister all existing service workers
+  // to prevent stale caching, Vite module interception, or blank white screens.
+  if (import.meta.env.DEV || window.location.hostname.includes('ais-dev') || window.location.hostname === 'localhost') {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister().catch(() => {});
+      }
+    }).catch(() => {});
+    return;
+  }
+
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })

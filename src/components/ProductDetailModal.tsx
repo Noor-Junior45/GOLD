@@ -22,7 +22,7 @@ interface ProductDetailModalProps {
   onClose: () => void;
   quantityInCart: number;
   onAddToCart: (product: Product) => void;
-  onUpdateQuantity: (productId: string, delta: number) => void;
+  onUpdateQuantity: (productId: string, delta: number, color?: string) => void;
   onOpenAuth?: () => void;
 }
 
@@ -629,7 +629,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               ) : (
                 <div className="flex items-center gap-3 bg-yellow-400 text-slate-950 font-black rounded-xl px-4 py-2 shadow-md border border-yellow-500/40">
                   <button
-                    onClick={() => onUpdateQuantity(product.id, -1)}
+                    onClick={() => onUpdateQuantity(product.id, -1, hasColorOptions ? selectedWireColor : undefined)}
                     className="p-1 hover:bg-yellow-500 rounded transition-colors cursor-pointer active:scale-95"
                     title="Decrease (reduces to 0)"
                   >
@@ -641,7 +641,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <button
                     onClick={() => {
                       if (quantityInCart < 100) {
-                        onUpdateQuantity(product.id, 1);
+                        onUpdateQuantity(product.id, 1, hasColorOptions ? selectedWireColor : undefined);
                       }
                     }}
                     disabled={quantityInCart >= 100}

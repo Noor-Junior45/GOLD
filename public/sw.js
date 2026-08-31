@@ -102,10 +102,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Rule 2: NEVER cache or intercept real-time / dynamic server APIs, Auth, or Payment endpoints
+  // Rule 2: NEVER cache or intercept real-time / dynamic server APIs, Auth, Vite dev paths, or Payment endpoints
   if (
     url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/rest') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.hostname.includes('ais-dev') ||
     url.hostname.includes('supabase.co/auth') ||
     url.hostname.includes('supabase.co/rest') ||
     url.hostname.includes('identitytoolkit.googleapis.com') ||

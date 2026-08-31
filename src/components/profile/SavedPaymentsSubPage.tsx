@@ -72,7 +72,7 @@ export const SavedPaymentsSubPage: React.FC<SavedPaymentsSubPageProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-slate-900">Saved Payment Modes</h1>
+          <h1 className="text-lg font-black text-slate-900">Payment</h1>
         </div>
       </div>
 

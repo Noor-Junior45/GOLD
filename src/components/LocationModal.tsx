@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   Search,
@@ -16,13 +16,10 @@ import {
   User as UserIcon,
   ZoomIn,
   ZoomOut,
-  Navigation,
   Loader2,
   Plus,
-  Compass,
   Map as MapIcon
 } from 'lucide-react';
-import L from 'leaflet';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
 import {
@@ -35,28 +32,22 @@ import {
   ACTIVE_SAVED_ADDRESS_KEY
 } from '../services/supabaseService';
 import { showToast } from '../utils/toast';
-import { API_BASE_URL } from '../lib/apiBase';
+import {
+  mapManager,
+  IMapInstance,
+  MapSearchResult,
+  MapCoordinates
+} from '../services/maps';
 
 interface LocationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  savedAddresses?: SavedAddress[];
   currentArea: KolkataArea;
   activeAddress?: SavedAddress | null;
   userProfile?: UserProfile | null;
   userPhone?: string | null;
   onSelectArea: (area: KolkataArea, address?: SavedAddress) => void;
-}
-
-export interface MapSearchResult {
-  id: string;
-  name: string;
-  secondaryText: string;
-  lat?: number;
-  lng?: number;
-  placeId?: string;
-  pincode?: string;
-  isMapGeocoded?: boolean;
-  source?: string;
 }
 
 // Helper function to extract a clean name from email if name is not set
@@ -75,6 +66,7 @@ function deriveNameFromEmail(email?: string): string {
 export const LocationModal: React.FC<LocationModalProps> = ({
   isOpen,
   onClose,
+  savedAddresses: externalSavedAddresses,
   currentArea,
   activeAddress,
   userProfile,
@@ -92,10 +84,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [mapSearchResults, setMapSearchResults] = useState<MapSearchResult[]>([]);
   const [isSearchingMap, setIsSearchingMap] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<'mappls' | 'google' | 'osm'>('mappls');
   const searchAbortRef = useRef<AbortController | null>(null);
 
   // Map Coordinates & Pin Location
-  const [pinCoordinates, setPinCoordinates] = useState<{ lat: number; lng: number }>({
+  const [pinCoordinates, setPinCoordinates] = useState<MapCoordinates>({
     lat: currentArea.lat || 22.5735,
     lng: currentArea.lng || 88.4331
   });
@@ -106,7 +99,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [matchedArea, setMatchedArea] = useState<KolkataArea>(currentArea);
 
   // Real Saved Addresses
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(() => getStoredAddresses());
+  const [internalSavedAddresses, setInternalSavedAddresses] = useState<SavedAddress[]>(() => getStoredAddresses());
+  const savedAddresses = externalSavedAddresses && externalSavedAddresses.length > 0
+    ? externalSavedAddresses
+    : internalSavedAddresses;
 
   // Form Fields for Step 3
   const [houseName, setHouseName] = useState('');
@@ -137,9 +133,9 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Leaflet Map Refs
+  // Map Instance Ref
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
+  const mapInstanceRef = useRef<IMapInstance | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -152,26 +148,21 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Subscribe to real-time addresses
+  // Subscribe to real-time addresses once
   useEffect(() => {
     const unsub = subscribeToAddresses((list) => {
-      setSavedAddresses(list);
+      setInternalSavedAddresses(list);
     });
     return () => unsub();
   }, []);
 
-  // Reset state and refresh saved addresses whenever modal opens
+  // Reset state whenever modal opens without triggering flickering re-fetches
   useEffect(() => {
     if (isOpen) {
-      setSavedAddresses(getStoredAddresses());
-      fetchUserAddresses().then((res) => {
-        if (res && res.length > 0) {
-          setSavedAddresses(res);
-        }
-      }).catch(() => {});
       setStep('search_home');
       setSearchQuery('');
       setFormError(null);
+      setActiveProvider(mapManager.getActiveProviderName());
 
       // Auto-fill Receiver Name
       if (activeAddress?.receiverName) {
@@ -204,114 +195,42 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   }, [isOpen, activeAddress, userProfile, userPhone]);
 
-  // Leaflet Map initialization for 'map_pin' step
-  useEffect(() => {
-    if (!isOpen || step !== 'map_pin') return;
-
-    const lat = pinCoordinates.lat || 22.5735;
-    const lng = pinCoordinates.lng || 88.4331;
-
-    const timer = setTimeout(() => {
-      if (!mapContainerRef.current) return;
-
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-
-      const map = L.map(mapContainerRef.current, {
-        center: [lat, lng],
-        zoom: 18,
-        minZoom: 13,
-        maxZoom: 19,
-        zoomControl: false,
-        attributionControl: false
-      });
-
-      // CartoDB Voyager tiles
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd'
-      }).addTo(map);
-
-      map.on('movestart', () => {
-        setIsMapDragging(true);
-      });
-
-      map.on('move', () => {
-        const center = map.getCenter();
-        setPinCoordinates({ lat: center.lat, lng: center.lng });
-      });
-
-      map.on('moveend', () => {
-        setIsMapDragging(false);
-        const center = map.getCenter();
-        setPinCoordinates({ lat: center.lat, lng: center.lng });
-        resolveNearestHub(center.lat, center.lng);
-      });
-
-      mapInstanceRef.current = map;
-      
-      map.invalidateSize();
-      setTimeout(() => map.invalidateSize(), 200);
-      setTimeout(() => map.invalidateSize(), 500);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [isOpen, step]);
-
-  // Resolve nearest Kolkata Hub & exact street
-  const resolveNearestHub = async (lat: number, lng: number) => {
+  // Reverse geocode and resolve closest Kolkata area
+  const resolveCoordinatesToAddress = useCallback(async (lat: number, lng: number) => {
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { 'Accept-Language': 'en' } }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.address) {
-          const addr = data.address;
-          const road = addr.road || addr.street || addr.pedestrian || addr.footway || '';
-          const suburb = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.city_district || '';
-          const building = addr.building || addr.amenity || addr.shop || '';
-          const postcode = addr.postcode || '';
+      const result = await mapManager.reverseGeocode({ lat, lng });
+      if (result && result.street) {
+        setDetectedStreet(result.street);
+        setBuildingRoad(result.street);
 
-          const parts = [building, road, suburb].filter(Boolean);
-          const resolvedStreet = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(', ');
+        let closest = KOLKATA_AREAS[0];
+        let minDistance = Number.MAX_VALUE;
 
-          if (resolvedStreet) {
-            setDetectedStreet(resolvedStreet);
-            setBuildingRoad(resolvedStreet);
-          }
-
-          let closest = KOLKATA_AREAS[0];
-          let minDistance = Number.MAX_VALUE;
-          KOLKATA_AREAS.forEach((area) => {
-            if (area.pincode && postcode && area.pincode === postcode) {
+        KOLKATA_AREAS.forEach((area) => {
+          if (result.pincode && area.pincode === result.pincode) {
+            closest = area;
+            minDistance = 0;
+          } else if (area.lat && area.lng) {
+            const dist = Math.hypot(area.lat - lat, area.lng - lng);
+            if (dist < minDistance) {
+              minDistance = dist;
               closest = area;
-              minDistance = 0;
-            } else if (area.lat && area.lng) {
-              const dist = Math.hypot(area.lat - lat, area.lng - lng);
-              if (dist < minDistance) {
-                minDistance = dist;
-                closest = area;
-              }
             }
-          });
-          setMatchedArea(closest);
-          return;
-        }
+          }
+        });
+
+        const resolvedArea: KolkataArea = {
+          ...closest,
+          exactStreet: result.street
+        };
+        setMatchedArea(resolvedArea);
+        return;
       }
-    } catch {
-      // Fallback
+    } catch (e) {
+      console.warn('[LocationModal] reverse geocode notice:', e);
     }
 
+    // Geometry closest fallback
     let closest = KOLKATA_AREAS[0];
     let minDistance = Number.MAX_VALUE;
 
@@ -329,15 +248,72 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     const street = closest.exactStreet || closest.name;
     setDetectedStreet(street);
     setBuildingRoad(street);
-  };
+  }, []);
+
+  // Map initialization for 'map_pin' step via MapProviderManager
+  useEffect(() => {
+    if (!isOpen || step !== 'map_pin') return;
+
+    let isMounted = true;
+    const lat = pinCoordinates.lat || 22.5735;
+    const lng = pinCoordinates.lng || 88.4331;
+
+    const timer = setTimeout(async () => {
+      if (!mapContainerRef.current || !isMounted) return;
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.destroy();
+        mapInstanceRef.current = null;
+      }
+
+      try {
+        const { instance, provider } = await mapManager.renderMap(mapContainerRef.current, {
+          center: { lat, lng },
+          zoom: 18,
+          minZoom: 12,
+          maxZoom: 19,
+          onMoveStart: () => {
+            if (isMounted) setIsMapDragging(true);
+          },
+          onMove: (coords) => {
+            if (isMounted) {
+              setPinCoordinates(coords);
+            }
+          },
+          onMoveEnd: (coords) => {
+            if (isMounted) {
+              setIsMapDragging(false);
+              setPinCoordinates(coords);
+              resolveCoordinatesToAddress(coords.lat, coords.lng);
+            }
+          }
+        });
+
+        if (isMounted) {
+          mapInstanceRef.current = instance;
+          setActiveProvider(provider);
+          instance.invalidateSize();
+          setTimeout(() => instance.invalidateSize(), 200);
+        }
+      } catch (err) {
+        console.error('[LocationModal] Map render failed:', err);
+      }
+    }, 100);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.destroy();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [isOpen, step, resolveCoordinatesToAddress]);
 
   // Fly to target coordinates on map
   const flyToCoords = (lat: number, lng: number, zoom = 18) => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([lat, lng], zoom, {
-        duration: 1.2,
-        easeLinearity: 0.25
-      });
+      mapInstanceRef.current.flyTo({ lat, lng }, zoom);
     }
   };
 
@@ -362,138 +338,75 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     onClose();
   };
 
-  // Trigger GPS Current Location fetch using Geolocation API to auto-populate map view
-  const handleDetectCurrentLocation = (goToMap = true) => {
+  // Trigger GPS Current Location fetch using Geolocation API directly without opening map
+  const handleDetectCurrentLocation = async (goToMap = false) => {
     setMapEntrySource('detect_location');
     setGpsLoading(true);
 
-    if (!navigator.geolocation) {
+    try {
+      const coords = await mapManager.getCurrentPosition();
+      setPinCoordinates(coords);
+
+      if (goToMap) {
+        setGpsLoading(false);
+        setStep('map_pin');
+        setTimeout(() => flyToCoords(coords.lat, coords.lng, 18), 150);
+      }
+
+      const revRes = await mapManager.reverseGeocode(coords);
+      const street = revRes.street || 'Kolkata';
+      setDetectedStreet(street);
+      setBuildingRoad(street);
+
+      let closest = KOLKATA_AREAS[0];
+      let minDistance = Number.MAX_VALUE;
+
+      KOLKATA_AREAS.forEach((a) => {
+        if (revRes.pincode && a.pincode === revRes.pincode) {
+          closest = a;
+          minDistance = 0;
+        } else if (a.lat && a.lng) {
+          const dist = Math.hypot(a.lat - coords.lat, a.lng - coords.lng);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closest = a;
+          }
+        }
+      });
+
+      const updatedArea: KolkataArea = {
+        ...closest,
+        exactStreet: street
+      };
+      setMatchedArea(updatedArea);
       setGpsLoading(false);
-      const defaultArea = KOLKATA_AREAS[3]; // Sector V
-      setPinCoordinates({ lat: defaultArea.lat || 22.5735, lng: defaultArea.lng || 88.4331 });
-      setMatchedArea(defaultArea);
-      setDetectedStreet(defaultArea.exactStreet || defaultArea.name);
-      setBuildingRoad(defaultArea.exactStreet || defaultArea.name);
+
+      if (!goToMap) {
+        handleUseCurrentLocationDirectly(updatedArea, street);
+      }
+    } catch (err) {
+      console.warn('[LocationModal] GPS detection fallback:', err);
+      setGpsLoading(false);
+
+      const fallback = KOLKATA_AREAS[3]; // Sector V
+      const fallbackLat = fallback.lat || 22.5735;
+      const fallbackLng = fallback.lng || 88.4331;
+      setPinCoordinates({ lat: fallbackLat, lng: fallbackLng });
+      setMatchedArea(fallback);
+      const street = fallback.exactStreet || fallback.name;
+      setDetectedStreet(street);
+      setBuildingRoad(street);
+
       if (goToMap) {
         setStep('map_pin');
-        setTimeout(() => flyToCoords(defaultArea.lat || 22.5735, defaultArea.lng || 88.4331, 18), 150);
+        setTimeout(() => flyToCoords(fallbackLat, fallbackLng, 18), 150);
       } else {
-        handleUseCurrentLocationDirectly(defaultArea, defaultArea.exactStreet || defaultArea.name);
+        handleUseCurrentLocationDirectly(fallback, street);
       }
-      return;
     }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setGpsLoading(false);
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setPinCoordinates({ lat, lng });
-
-        if (goToMap) {
-          setStep('map_pin');
-          setTimeout(() => flyToCoords(lat, lng, 18), 150);
-        }
-
-        let resolvedStreet = '';
-        let matched = KOLKATA_AREAS[0];
-
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            { headers: { 'Accept-Language': 'en' } }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.address) {
-              const addr = data.address;
-              const road = addr.road || addr.street || addr.pedestrian || addr.footway || '';
-              const suburb = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.city_district || '';
-              const building = addr.building || addr.amenity || addr.shop || '';
-              const postcode = addr.postcode || '';
-              const parts = [building, road, suburb].filter(Boolean);
-              resolvedStreet = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(', ');
-
-              let minDistance = Number.MAX_VALUE;
-              KOLKATA_AREAS.forEach((a) => {
-                if (a.pincode && postcode && a.pincode === postcode) {
-                  matched = a;
-                  minDistance = 0;
-                } else if (a.lat && a.lng) {
-                  const dist = Math.hypot(a.lat - lat, a.lng - lng);
-                  if (dist < minDistance) {
-                    minDistance = dist;
-                    matched = a;
-                  }
-                }
-              });
-            }
-          }
-        } catch {
-          // fallback
-        }
-
-        if (!resolvedStreet) {
-          let minDistance = Number.MAX_VALUE;
-          KOLKATA_AREAS.forEach((a) => {
-            if (a.lat && a.lng) {
-              const dist = Math.hypot(a.lat - lat, a.lng - lng);
-              if (dist < minDistance) {
-                minDistance = dist;
-                matched = a;
-              }
-            }
-          });
-          resolvedStreet = matched.exactStreet || matched.name;
-        }
-
-        setMatchedArea(matched);
-        setDetectedStreet(resolvedStreet);
-        setBuildingRoad(resolvedStreet);
-
-        if (!goToMap) {
-          handleUseCurrentLocationDirectly(matched, resolvedStreet);
-        }
-      },
-      (err) => {
-        console.warn('High precision GPS failed, using standard fallback', err);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setGpsLoading(false);
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            setPinCoordinates({ lat, lng });
-            resolveNearestHub(lat, lng);
-            if (goToMap) {
-              setStep('map_pin');
-              setTimeout(() => flyToCoords(lat, lng, 18), 150);
-            } else {
-              const fallback = KOLKATA_AREAS[3];
-              handleUseCurrentLocationDirectly(fallback, fallback.exactStreet || fallback.name);
-            }
-          },
-          () => {
-            setGpsLoading(false);
-            const fallback = KOLKATA_AREAS[3];
-            setPinCoordinates({ lat: fallback.lat || 22.5735, lng: fallback.lng || 88.4331 });
-            setMatchedArea(fallback);
-            setDetectedStreet(fallback.exactStreet || fallback.name);
-            setBuildingRoad(fallback.exactStreet || fallback.name);
-            if (goToMap) {
-              setStep('map_pin');
-              setTimeout(() => flyToCoords(fallback.lat || 22.5735, fallback.lng || 88.4331, 18), 150);
-            } else {
-              handleUseCurrentLocationDirectly(fallback, fallback.exactStreet || fallback.name);
-            }
-          },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-    );
   };
 
-  // Real-time Google Maps Places / Geocoding Search Effect
+  // Real-time Places Search via MapProviderManager
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
@@ -512,29 +425,19 @@ export const LocationModal: React.FC<LocationModalProps> = ({
 
     const debounceTimer = setTimeout(async () => {
       try {
-        // 1. Fetch from Google Maps Platform Places / Geocoding endpoint
-        const response = await fetch(
-          `${API_BASE_URL}/api/maps/places-autocomplete?input=${encodeURIComponent(q)}`,
-          {
-            signal: controller.signal
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && Array.isArray(data.results) && data.results.length > 0) {
-            setMapSearchResults(data.results);
-            setIsSearchingMap(false);
-            return;
-          }
+        const results = await mapManager.searchPlaces(q, pinCoordinates);
+        if (results && results.length > 0) {
+          setMapSearchResults(results);
+          setIsSearchingMap(false);
+          return;
         }
       } catch (err: any) {
         if (err.name !== 'AbortError') {
-          console.warn('Google Maps search error:', err);
+          console.warn('[LocationModal] Search error:', err);
         }
       }
 
-      // Local fallback with clean road and area names
+      // Local fallback
       const localMatches: MapSearchResult[] = KOLKATA_AREAS.filter((area) => {
         const lowerQ = q.toLowerCase();
         return (
@@ -549,7 +452,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         lat: area.lat || 22.5735,
         lng: area.lng || 88.4331,
         pincode: area.pincode,
-        isMapGeocoded: false
+        provider: 'local' as const
       }));
 
       setMapSearchResults(localMatches);
@@ -560,28 +463,24 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [searchQuery]);
+  }, [searchQuery, pinCoordinates]);
 
-  // Handle selection of a Google Maps search result
+  // Handle selection of a search result
   const handleSelectMapSearchResult = async (result: MapSearchResult, openPinMap = true) => {
     let lat = result.lat;
     let lng = result.lng;
     let pin = result.pincode;
 
-    // If Google Maps Place ID exists but coords are not yet present, resolve place details
     if (result.placeId && (!lat || !lng)) {
       try {
-        const detRes = await fetch(`${API_BASE_URL}/api/maps/place-details?placeId=${encodeURIComponent(result.placeId)}`);
-        if (detRes.ok) {
-          const detData = await detRes.json();
-          if (detData.success && detData.lat && detData.lng) {
-            lat = detData.lat;
-            lng = detData.lng;
-            if (detData.pincode) pin = detData.pincode;
-          }
+        const details = await mapManager.getPlaceDetails(result.placeId);
+        if (details) {
+          lat = details.lat;
+          lng = details.lng;
+          if (details.pincode) pin = details.pincode;
         }
       } catch (err) {
-        console.warn('Could not fetch place details:', err);
+        console.warn('[LocationModal] Could not fetch place details:', err);
       }
     }
 
@@ -628,24 +527,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   };
 
-  // Open map to pinpoint arbitrary area
-  const handleOpenPinOnMap = (area: KolkataArea) => {
-    setMapEntrySource('detect_location');
-    setMatchedArea(area);
-    setDetectedStreet(area.exactStreet || area.name);
-    setBuildingRoad(area.exactStreet || area.name);
-    if (area.lat && area.lng) {
-      setPinCoordinates({ lat: area.lat, lng: area.lng });
-    }
-    setStep('map_pin');
-    setTimeout(() => {
-      if (area.lat && area.lng) {
-        flyToCoords(area.lat, area.lng, 18);
-      }
-    }, 150);
-  };
-
-  // Proceed to address details
+  // Proceed to address details form
   const handleProceedToDetails = () => {
     setBuildingRoad(detectedStreet || matchedArea.exactStreet || matchedArea.name);
     setFormError(null);
@@ -771,12 +653,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         className="w-full max-w-[420px] sm:w-[420px] md:w-[440px] h-full bg-[#f4f4f5] shadow-2xl flex flex-col overflow-hidden border-r border-slate-300 animate-in slide-in-from-left duration-300 z-10"
       >
         
-        {/* ================= STEP 1: CLEAN LEFT DRAWER SEARCH ================= */}
+        {/* ================= STEP 1: SEARCH & ADDRESS LIST ================= */}
         {step === 'search_home' && (
           <div className="flex-1 flex flex-col p-6 sm:p-8 overflow-y-auto no-scrollbar">
             
-            {/* Top Close Button (Clean Left X Icon as in reference image) */}
-            <div className="mb-6 flex items-center justify-between">
+            {/* Top Close Button & Header */}
+            <div className="mb-4 flex items-center justify-between">
               <button
                 type="button"
                 id="location-drawer-close-btn"
@@ -786,16 +668,17 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               >
                 <X className="w-6 h-6 stroke-[2]" />
               </button>
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Select Delivery Location</span>
             </div>
 
-            {/* Search Input Box with Map connection */}
+            {/* Search Input Box */}
             <div className="relative mb-4">
               <div className="flex items-center bg-white border border-slate-300 focus-within:border-slate-800 focus-within:ring-1 focus-within:ring-slate-800 transition-all px-3.5 py-3 shadow-2xs rounded-lg">
                 <Search className="w-4 h-4 text-slate-400 shrink-0 mr-2.5" />
                 <input
                   type="text"
                   id="location-search-input"
-                  placeholder="Search with Google Maps (street, area, PIN)..."
+                  placeholder="Search street, area, PIN code..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
@@ -815,22 +698,18 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </div>
             </div>
 
-            {/* Real-time Google Maps Places / Geocoded Search Results */}
+            {/* Real-time Search Results */}
             {searchQuery.trim() ? (
               <div className="flex-1 flex flex-col bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden mb-4">
                 <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                   <span className="flex items-center gap-1.5 text-slate-800">
                     <MapIcon className="w-3.5 h-3.5 text-emerald-600" />
-                    Google Maps Locations
+                    Locations ({mapSearchResults.length})
                   </span>
-                  {isSearchingMap ? (
+                  {isSearchingMap && (
                     <span className="text-emerald-700 font-normal normal-case flex items-center gap-1">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      Searching Google Maps...
-                    </span>
-                  ) : (
-                    <span className="text-[10px] font-normal normal-case text-slate-400">
-                      Google Maps Platform
+                      Searching...
                     </span>
                   )}
                 </div>
@@ -880,27 +759,35 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </div>
             ) : (
               <>
-                {/* Clean, Animated "Detect Location" Button */}
+                {/* Detect Location Button */}
                 <div 
                   id="detect-my-current-location-btn"
-                  onClick={() => handleDetectCurrentLocation(true)}
-                  className="relative overflow-hidden bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between"
-                  title="Detect my current location using GPS"
+                  onClick={() => !gpsLoading && handleDetectCurrentLocation(false)}
+                  className={`relative overflow-hidden bg-white border rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between ${
+                    gpsLoading
+                      ? 'border-blue-500 bg-blue-50/30 ring-1 ring-blue-500 pointer-events-none'
+                      : 'border-slate-200 hover:border-slate-900 active:scale-[0.99]'
+                  }`}
+                  title="Directly fetch current location"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-200 shrink-0">
-                      {/* Radar pulse ping ring */}
-                      <span className="absolute inset-0 rounded-lg bg-blue-400/30 animate-ping opacity-60 group-hover:opacity-100" />
-                      <span className="absolute -inset-1 rounded-xl bg-blue-500/10 animate-pulse" />
+                    <div className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-200 shrink-0 ${
+                      gpsLoading
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                    }`}>
                       {gpsLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin relative z-10" />
+                        <Loader2 className="w-4.5 h-4.5 animate-spin relative z-10" />
                       ) : (
-                        <LocateFixed className="w-4 h-4 stroke-[2.2] relative z-10 group-hover:scale-110 transition-transform duration-200" />
+                        <>
+                          <span className="absolute inset-0 rounded-lg bg-blue-400/30 animate-ping opacity-60 group-hover:opacity-100" />
+                          <LocateFixed className="w-4.5 h-4.5 stroke-[2.2] relative z-10 group-hover:scale-110 transition-transform duration-200" />
+                        </>
                       )}
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-sm font-bold text-slate-900 group-hover:text-black tracking-tight truncate">
-                        {gpsLoading ? 'Detecting Location...' : 'Detect Location'}
+                        {gpsLoading ? 'Fetching Current Location...' : 'Detect Location'}
                       </span>
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 uppercase tracking-wider group-hover:bg-blue-100 transition-colors shrink-0">
                         GPS
@@ -909,7 +796,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   </div>
 
                   <div className="flex items-center text-slate-400 group-hover:text-slate-900 transition-colors shrink-0 pl-2">
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
+                    {gpsLoading ? (
+                      <span className="text-xs text-blue-600 font-semibold animate-pulse">Locating...</span>
+                    ) : (
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
+                    )}
                   </div>
                 </div>
 
@@ -919,6 +810,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   onClick={() => {
                     setMapEntrySource('add_saved_address');
                     setStep('map_pin');
+                    // Ensure coordinates are initialized from current area or default Kolkata center
+                    const initLat = pinCoordinates.lat || currentArea.lat || 22.5735;
+                    const initLng = pinCoordinates.lng || currentArea.lng || 88.4331;
+                    setTimeout(() => {
+                      flyToCoords(initLat, initLng, 18);
+                    }, 150);
                   }}
                   className="mt-2.5 bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between"
                   title="Add new address"
@@ -935,13 +832,15 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-transform duration-200 shrink-0" />
                 </div>
 
-                {/* Saved Addresses Section (Clean, without demo or popular tags) */}
-                {savedAddresses.length > 0 && (
-                  <div className="mt-8 space-y-3">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-0.5">
-                      Saved Addresses
-                    </div>
+                {/* Saved Addresses Section */}
+                <div className="mt-6 space-y-3">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Saved Addresses {savedAddresses.length > 0 ? `(${savedAddresses.length})` : ''}
+                    </span>
+                  </div>
 
+                  {savedAddresses.length > 0 ? (
                     <div className="space-y-2.5">
                       {savedAddresses.map((addr) => {
                         const isSelected = activeAddress?.id === addr.id;
@@ -949,30 +848,31 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                           <div
                             key={addr.id}
                             onClick={() => handleSelectSavedAddress(addr)}
-                            className={`p-3.5 bg-white border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                            className={`p-3.5 bg-white border transition-all cursor-pointer rounded-xl flex items-start justify-between gap-3 shadow-2xs hover:shadow-xs ${
                               isSelected
-                                ? 'border-slate-800 ring-1 ring-slate-800 shadow-2xs'
+                                ? 'border-slate-900 ring-1 ring-slate-900'
                                 : 'border-slate-200 hover:border-slate-300'
                             }`}
                           >
-                            <div className="flex items-start gap-3 overflow-hidden">
-                              <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                            <div className="flex items-start gap-3 overflow-hidden min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
                                 {getTagIcon(addr.tag)}
                               </div>
-                              <div className="overflow-hidden">
+                              <div className="overflow-hidden min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-slate-900 truncate">
-                                    {addr.houseName}
+                                    {addr.houseName || addr.houseFlat || 'Address'}
                                   </span>
-                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5">
+                                  <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
                                     {getTagLabel(addr)}
                                   </span>
                                 </div>
                                 <div className="text-xs text-slate-600 truncate mt-0.5">
-                                  {addr.houseFlat}, {addr.buildingRoad}
+                                  {addr.houseFlat ? `${addr.houseFlat}, ` : ''}{addr.buildingRoad || ''}
                                 </div>
-                                <div className="text-[11px] text-slate-400 mt-0.5">
-                                  {addr.area.name} • {addr.area.pincode}
+                                <div className="text-[11px] text-slate-400 mt-0.5 truncate">
+                                  {addr.area?.name || 'Kolkata'} • {addr.area?.pincode || '700001'}
+                                  {addr.receiverName ? ` • ${addr.receiverName}` : ''}
                                 </div>
                               </div>
                             </div>
@@ -981,30 +881,37 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                               <button
                                 type="button"
                                 onClick={(e) => handleDeleteAddress(addr.id, e)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 title="Delete address"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                              {isSelected && <Check className="w-4 h-4 text-slate-900 shrink-0" />}
+                              {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 stroke-[3]" />}
                             </div>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="bg-white border border-dashed border-slate-300 rounded-xl p-4 text-center">
+                      <p className="text-xs font-semibold text-slate-700">No saved addresses yet</p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Use "Detect Location" or "Add Address" to pin your delivery location.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
           </div>
         )}
 
-        {/* ================= STEP 2: INTERACTIVE MAP PIN (In-Drawer) ================= */}
+        {/* ================= STEP 2: INTERACTIVE MAP PIN ================= */}
         {step === 'map_pin' && (
           <div className="flex-1 flex flex-col relative overflow-hidden bg-white">
             
-            {/* Top Bar with Back Button */}
+            {/* Top Bar with Back Button & Title */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <button
@@ -1020,7 +927,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                     Set Delivery Location
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Drag map to position pin at your exact doorstep
+                    Drag map to position pin at your doorstep
                   </p>
                 </div>
               </div>
@@ -1039,7 +946,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
             <div className="flex-1 w-full min-h-[300px] relative">
               <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-              {/* Floating Top Quick GPS Action: Detect My Current Location */}
+              {/* Floating Top Quick GPS Action */}
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-[90%] flex justify-center">
                 <button
                   type="button"

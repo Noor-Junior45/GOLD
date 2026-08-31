@@ -36,7 +36,9 @@ import {
   fetchCartItemsFromSupabase,
   syncCartItemToSupabase,
   removeCartItemFromSupabase,
-  clearCartInSupabase
+  clearCartInSupabase,
+  getLocalCartItems,
+  saveLocalCartItems
 } from './services/cartService';
 import {
   getSavedUserProfile,
@@ -123,8 +125,22 @@ export default function App() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Cart State
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // Cart State - Local Storage Backed for zero loss
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => getLocalCartItems());
+
+  // Listen for cross-component and tab cart update events
+  useEffect(() => {
+    const handleCartSync = (e: Event) => {
+      const customEvent = e as CustomEvent<{ items?: CartItem[] }>;
+      if (customEvent.detail && Array.isArray(customEvent.detail.items)) {
+        setCartItems(customEvent.detail.items);
+      } else {
+        setCartItems(getLocalCartItems());
+      }
+    };
+    window.addEventListener('giriraj_cart_updated', handleCartSync);
+    return () => window.removeEventListener('giriraj_cart_updated', handleCartSync);
+  }, []);
 
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -387,7 +403,7 @@ export default function App() {
         setUserName('');
         setOrders([]);
         setSavedAddresses([]);
-        setCartItems([]);
+        setCartItems(getLocalCartItems());
       }
     });
 
@@ -398,7 +414,7 @@ export default function App() {
       setUserName('');
       setOrders([]);
       setSavedAddresses([]);
-      setCartItems([]);
+      setCartItems(getLocalCartItems());
     };
     window.addEventListener('giriraj_user_logged_out', handleLogoutEvent);
 
@@ -565,18 +581,22 @@ export default function App() {
     };
   }, [navigate]);
 
-  // Check device location permission on app open; if not granted/closed, show bottom popup
+  // Check device location permission on app open; if not granted/closed, show bottom popup smoothly
   useEffect(() => {
     try {
       const dismissed = sessionStorage.getItem('buildnow_device_loc_prompt_dismissed');
       if (dismissed === 'true') return;
+      
+      // If user already has an active selected address or saved address in storage, do not abruptly popup
+      const activeSaved = localStorage.getItem('giriraj_active_saved_address') || localStorage.getItem('giriraj_active_address');
+      if (activeSaved) return;
     } catch {}
 
     const timer = setTimeout(async () => {
       try {
         if ('permissions' in navigator && navigator.permissions?.query) {
           const status = await navigator.permissions.query({ name: 'geolocation' });
-          if (status.state !== 'granted') {
+          if (status.state === 'prompt') {
             setIsDeviceLocationPromptOpen(true);
           }
           status.onchange = () => {
@@ -584,13 +604,11 @@ export default function App() {
               setIsDeviceLocationPromptOpen(false);
             }
           };
-        } else {
-          setIsDeviceLocationPromptOpen(true);
         }
       } catch {
-        setIsDeviceLocationPromptOpen(true);
+        // fail silently without blinking
       }
-    }, 700);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, []);
@@ -614,40 +632,55 @@ export default function App() {
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   const handleAddToCart = (product: Product) => {
+    if (!product || product.id === undefined || product.id === null) return;
+    const prodIdStr = String(product.id);
     const productCol = product.selectedColor || undefined;
     hapticMedium();
     trackGAAddToCart(product, 1, productCol);
     setCartItems((prev) => {
-      const existing = prev.find(
+      const existingIndex = prev.findIndex(
         (i) =>
-          i.product.id === product.id &&
-          (i.selectedColor || i.product.selectedColor) === productCol
+          String(i.product.id) === prodIdStr &&
+          (i.selectedColor || i.product.selectedColor || undefined) === productCol
       );
-      const newQty = existing ? Math.min(100, existing.quantity + 1) : 1;
-      syncCartItemToSupabase(product.id, newQty, productCol).catch(() => {});
-      if (existing) {
-        return prev.map((i) =>
-          i.product.id === product.id &&
-          (i.selectedColor || i.product.selectedColor) === productCol
-            ? { ...i, quantity: newQty }
-            : i
+      let updated: CartItem[];
+      if (existingIndex !== -1) {
+        const existing = prev[existingIndex];
+        const newQty = Math.min(100, (existing.quantity || 1) + 1);
+        updated = prev.map((item, idx) =>
+          idx === existingIndex ? { ...item, quantity: newQty } : item
         );
+        syncCartItemToSupabase(prodIdStr, newQty, productCol).catch(() => {});
+      } else {
+        const newItem: CartItem = {
+          product: {
+            ...product,
+            id: prodIdStr,
+            price: Number(product.price || 0)
+          },
+          quantity: 1,
+          selectedColor: productCol
+        };
+        updated = [...prev, newItem];
+        syncCartItemToSupabase(prodIdStr, 1, productCol).catch(() => {});
       }
-      return [...prev, { product, quantity: 1, selectedColor: productCol }];
+      saveLocalCartItems(updated);
+      return updated;
     });
   };
 
   const handleUpdateCartQuantity = (productId: string, delta: number, color?: string) => {
+    const prodIdStr = String(productId);
     if (delta > 0) {
       hapticLight();
     } else {
       hapticLight();
     }
     setCartItems((prev) => {
-      return prev
+      const updated = prev
         .map((i) => {
           const matchColor = color !== undefined ? (i.selectedColor || i.product.selectedColor) === color : true;
-          if (i.product.id === productId && matchColor) {
+          if (String(i.product.id) === prodIdStr && matchColor) {
             const newQty = i.quantity + delta;
             if (delta > 0) {
               trackGAAddToCart(i.product, delta, i.selectedColor);
@@ -656,87 +689,97 @@ export default function App() {
             }
             if (newQty <= 0) {
               hapticWarning();
-              removeCartItemFromSupabase(productId).catch(() => {});
+              removeCartItemFromSupabase(prodIdStr).catch(() => {});
               return null; // remove from cart when reaching 0
             }
-            syncCartItemToSupabase(productId, Math.min(100, newQty), color).catch(() => {});
+            syncCartItemToSupabase(prodIdStr, Math.min(100, newQty), color).catch(() => {});
             return { ...i, quantity: Math.min(100, newQty) };
           }
           return i;
         })
         .filter(Boolean) as CartItem[];
+      saveLocalCartItems(updated);
+      return updated;
     });
   };
 
   const handleRemoveCartItem = (productId: string, color?: string) => {
+    const prodIdStr = String(productId);
     hapticWarning();
-    removeCartItemFromSupabase(productId).catch(() => {});
+    removeCartItemFromSupabase(prodIdStr).catch(() => {});
     setCartItems((prev) => {
       const itemToRemove = prev.find(
         (i) =>
-          i.product.id === productId &&
+          String(i.product.id) === prodIdStr &&
           (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
       );
       if (itemToRemove) {
         trackGARemoveFromCart(itemToRemove.product, itemToRemove.quantity);
       }
-      return prev.filter(
+      const updated = prev.filter(
         (i) =>
           !(
-            i.product.id === productId &&
+            String(i.product.id) === prodIdStr &&
             (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
           )
       );
+      saveLocalCartItems(updated);
+      return updated;
     });
   };
 
   const handleClearCart = () => {
     hapticWarning();
     clearCartInSupabase().catch(() => {});
+    saveLocalCartItems([]);
     setCartItems([]);
   };
 
   const handleUpdateItemColor = (productId: string, oldColor: string | undefined, newColor: string) => {
+    const prodIdStr = String(productId);
     setCartItems((prev) => {
       const existingNewColorIndex = prev.findIndex(
-        (i) => i.product.id === productId && (i.selectedColor || i.product.selectedColor) === newColor
+        (i) => String(i.product.id) === prodIdStr && (i.selectedColor || i.product.selectedColor) === newColor
       );
 
       const targetItemIndex = prev.findIndex(
-        (i) => i.product.id === productId && (i.selectedColor || i.product.selectedColor) === oldColor
+        (i) => String(i.product.id) === prodIdStr && (i.selectedColor || i.product.selectedColor) === oldColor
       );
 
       if (targetItemIndex === -1) return prev;
 
       const targetItem = prev[targetItemIndex];
+      let updated: CartItem[];
 
       // If item with newColor already exists in cart, merge quantities
       if (existingNewColorIndex !== -1 && existingNewColorIndex !== targetItemIndex) {
         const mergedQty = Math.min(100, prev[existingNewColorIndex].quantity + targetItem.quantity);
-        syncCartItemToSupabase(productId, mergedQty, newColor).catch(() => {});
-        return prev
+        syncCartItemToSupabase(prodIdStr, mergedQty, newColor).catch(() => {});
+        updated = prev
           .filter((_, idx) => idx !== targetItemIndex)
           .map((item, idx) =>
             idx === (existingNewColorIndex > targetItemIndex ? existingNewColorIndex - 1 : existingNewColorIndex)
               ? { ...item, quantity: mergedQty, selectedColor: newColor }
               : item
           );
-      }
-
-      // Otherwise just change the color of the target item
-      syncCartItemToSupabase(productId, targetItem.quantity, newColor).catch(() => {});
-      return prev.map((item, idx) =>
-        idx === targetItemIndex
-          ? {
-              ...item,
-              selectedColor: newColor,
-              product: {
-                ...item.product,
-                selectedColor: newColor
+      } else {
+        // Otherwise just change the color of the target item
+        syncCartItemToSupabase(prodIdStr, targetItem.quantity, newColor).catch(() => {});
+        updated = prev.map((item, idx) =>
+          idx === targetItemIndex
+            ? {
+                ...item,
+                selectedColor: newColor,
+                product: {
+                  ...item.product,
+                  selectedColor: newColor
+                }
               }
-            }
-          : item
-      );
+            : item
+        );
+      }
+      saveLocalCartItems(updated);
+      return updated;
     });
   };
 
@@ -1165,6 +1208,7 @@ export default function App() {
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
+        savedAddresses={savedAddresses}
         currentArea={currentArea}
         activeAddress={activeSavedAddress}
         userProfile={userProfile}
@@ -1184,7 +1228,9 @@ export default function App() {
         onClose={() => setSelectedProductQuickView(null)}
         quantityInCart={
           selectedProductQuickView
-            ? cartItems.find((i) => i.product.id === selectedProductQuickView.id)?.quantity || 0
+            ? cartItems
+                .filter((i) => String(i.product.id) === String(selectedProductQuickView.id))
+                .reduce((acc, it) => acc + it.quantity, 0)
             : 0
         }
         onAddToCart={handleAddToCart}

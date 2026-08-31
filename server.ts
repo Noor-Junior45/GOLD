@@ -1099,6 +1099,203 @@ async function startServer() {
   });
 
   // =========================================================================
+  // MAPPLS & GOOGLE MAPS PLATFORM PROXY ENDPOINTS (PRIMARY & FALLBACK)
+  // =========================================================================
+  
+  // Mappls Web Places Search / AutoSuggest Proxy
+  app.get("/api/maps/mappls/autocomplete", async (req, res) => {
+    try {
+      const query = (req.query.input as string || "").trim();
+      if (!query) {
+        return res.json({ success: true, results: [] });
+      }
+
+      const mapplsKey = (process.env.MAPPLS_MAP_KEY || process.env.VITE_MAPPLS_MAP_KEY || "").trim();
+      if (!mapplsKey || mapplsKey === "YOUR_MAPPLS_MAP_KEY" || mapplsKey === "YOUR_STATIC_KEY") {
+        return res.status(400).json({ success: false, message: "Mappls static map key is not configured on server" });
+      }
+
+      const lat = req.query.lat ? parseFloat(req.query.lat as string) : 22.5726;
+      const lng = req.query.lng ? parseFloat(req.query.lng as string) : 88.3639;
+
+      // 1. Try Mappls Advanced Maps Geo Code / Search API
+      try {
+        const mapplsUrl = `https://apis.mappls.com/advancedmaps/v1/${encodeURIComponent(mapplsKey)}/geo_code?addr=${encodeURIComponent(query)}&bias=1&bound=22.35,88.10;22.75,88.58`;
+        const mapplsRes = await fetch(mapplsUrl, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "BuildNowKolkata/2.4"
+          }
+        });
+
+        if (mapplsRes.ok) {
+          const data = await mapplsRes.json();
+          const items = data.copResults || data.results || [];
+          if (Array.isArray(items) && items.length > 0) {
+            const results = items.map((item: any, idx: number) => {
+              const name = item.formatted_address?.split(",")[0] || item.poi || item.street || query;
+              const secondary = item.formatted_address || `${item.subLocality || item.locality || 'Kolkata'}, West Bengal`;
+              return {
+                id: `mappls-${idx}-${item.eLoc || item.place_id || Math.random().toString(36).substring(2, 7)}`,
+                name: name.trim(),
+                secondaryText: secondary.trim(),
+                lat: parseFloat(item.lat || item.latitude || lat),
+                lng: parseFloat(item.lng || item.longitude || lng),
+                pincode: item.pincode || item.pin || "",
+                placeId: item.eLoc || item.place_id || undefined,
+                source: "mappls"
+              };
+            });
+            return res.json({ success: true, source: "mappls", results });
+          }
+        }
+      } catch (mErr) {
+        console.warn("[Mappls Autocomplete Notice]:", mErr);
+      }
+
+      return res.json({ success: false, message: "Mappls search returned no results" });
+    } catch (err: any) {
+      console.error("[Mappls Autocomplete Error]:", err);
+      return res.status(500).json({ success: false, message: "Mappls search request failed" });
+    }
+  });
+
+  // Mappls Reverse Geocoding Proxy
+  app.get("/api/maps/mappls/rev-geocode", async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ success: false, message: "Invalid latitude/longitude" });
+      }
+
+      const mapplsKey = (process.env.MAPPLS_MAP_KEY || process.env.VITE_MAPPLS_MAP_KEY || "").trim();
+      if (!mapplsKey || mapplsKey === "YOUR_MAPPLS_MAP_KEY" || mapplsKey === "YOUR_STATIC_KEY") {
+        return res.status(400).json({ success: false, message: "Mappls static map key is not configured" });
+      }
+
+      const mapplsUrl = `https://apis.mappls.com/advancedmaps/v1/${encodeURIComponent(mapplsKey)}/rev_geocode?lat=${lat}&lng=${lng}`;
+      const mapplsRes = await fetch(mapplsUrl, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "BuildNowKolkata/2.4"
+        }
+      });
+
+      if (mapplsRes.ok) {
+        const data = await mapplsRes.json();
+        const results = data.results || data.copResults || [];
+        const first = Array.isArray(results) ? results[0] : results;
+        if (first) {
+          const street = first.street || first.houseNumber || first.poi || first.formatted_address?.split(",")[0] || "Kolkata";
+          const locality = first.subLocality || first.locality || first.subDistrict || "Kolkata";
+          const city = first.city || first.district || "Kolkata";
+          const state = first.state || "West Bengal";
+          const pincode = first.pincode || first.pin || "700001";
+          const formatted = first.formatted_address || `${street}, ${locality}, ${city} ${pincode}`;
+
+          return res.json({
+            success: true,
+            source: "mappls",
+            result: {
+              formattedAddress: formatted,
+              street,
+              locality,
+              suburb: first.subLocality || locality,
+              city,
+              state,
+              pincode,
+              lat,
+              lng
+            }
+          });
+        }
+      }
+
+      return res.status(404).json({ success: false, message: "No reverse geocoding result from Mappls" });
+    } catch (err: any) {
+      console.error("[Mappls Reverse Geocoding Error]:", err);
+      return res.status(500).json({ success: false, message: "Mappls reverse geocoding request failed" });
+    }
+  });
+
+  // Google Maps Reverse Geocoding Proxy
+  app.get("/api/maps/google/rev-geocode", async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ success: false, message: "Invalid latitude/longitude" });
+      }
+
+      const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+      if (apiKey && apiKey !== "YOUR_API_KEY") {
+        try {
+          const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+          const gRes = await fetch(googleUrl);
+          if (gRes.ok) {
+            const data = await gRes.json();
+            if (data.status === "OK" && Array.isArray(data.results) && data.results.length > 0) {
+              const first = data.results[0];
+              let street = "";
+              let locality = "";
+              let city = "Kolkata";
+              let state = "West Bengal";
+              let pincode = "";
+
+              if (Array.isArray(first.address_components)) {
+                for (const comp of first.address_components) {
+                  if (comp.types.includes("route") || comp.types.includes("street_address")) {
+                    street = comp.long_name;
+                  }
+                  if (comp.types.includes("sublocality") || comp.types.includes("neighborhood")) {
+                    locality = comp.long_name;
+                  }
+                  if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
+                    city = comp.long_name;
+                  }
+                  if (comp.types.includes("administrative_area_level_1")) {
+                    state = comp.long_name;
+                  }
+                  if (comp.types.includes("postal_code")) {
+                    pincode = comp.long_name;
+                  }
+                }
+              }
+
+              const resolvedStreet = street || first.formatted_address?.split(",")[0] || locality || "Kolkata";
+
+              return res.json({
+                success: true,
+                source: "google-maps",
+                result: {
+                  formattedAddress: first.formatted_address,
+                  street: resolvedStreet,
+                  locality: locality || city,
+                  suburb: locality,
+                  city,
+                  state,
+                  pincode: pincode || "700001",
+                  lat,
+                  lng
+                }
+              });
+            }
+          }
+        } catch (gErr) {
+          console.warn("[Google Rev Geocode Notice]:", gErr);
+        }
+      }
+
+      return res.status(404).json({ success: false, message: "Google reverse geocoding unavailable" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: "Google reverse geocode error" });
+    }
+  });
+
+  // =========================================================================
   // GOOGLE MAPS PLATFORM PLACES AUTOCOMPLETE & GEOCODING API PROXY
   // =========================================================================
   app.get("/api/maps/places-autocomplete", async (req, res) => {

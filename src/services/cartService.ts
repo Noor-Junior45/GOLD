@@ -10,11 +10,81 @@ export interface SavedItemRecord {
   createdAt: string;
 }
 
+const LOCAL_CART_KEY_BASE = 'giriraj_cart_items_v2';
 const LOCAL_SAVED_ITEMS_KEY_BASE = 'giriraj_saved_items_v2';
 
+export function getCartStorageKey(): string {
+  try {
+    const scope = getActiveUserScope();
+    return scope ? `${LOCAL_CART_KEY_BASE}_${scope}` : `${LOCAL_CART_KEY_BASE}_guest`;
+  } catch {
+    return `${LOCAL_CART_KEY_BASE}_guest`;
+  }
+}
+
 function getSavedItemsKey(): string {
-  const scope = getActiveUserScope();
-  return scope ? `${LOCAL_SAVED_ITEMS_KEY_BASE}_${scope}` : `${LOCAL_SAVED_ITEMS_KEY_BASE}_guest`;
+  try {
+    const scope = getActiveUserScope();
+    return scope ? `${LOCAL_SAVED_ITEMS_KEY_BASE}_${scope}` : `${LOCAL_SAVED_ITEMS_KEY_BASE}_guest`;
+  } catch {
+    return `${LOCAL_SAVED_ITEMS_KEY_BASE}_guest`;
+  }
+}
+
+/**
+ * Reads locally persisted cart items from localStorage.
+ */
+export function getLocalCartItems(): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const key = getCartStorageKey();
+    let raw = localStorage.getItem(key);
+    if (!raw && key !== `${LOCAL_CART_KEY_BASE}_guest`) {
+      raw = localStorage.getItem(`${LOCAL_CART_KEY_BASE}_guest`);
+    }
+    if (!raw) {
+      raw = localStorage.getItem('giriraj_cart_items');
+    }
+    if (!raw) return [];
+    
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((item: any) => item && item.product && (item.product.id || item.product.id === 0) && item.quantity > 0)
+      .map((item: any) => ({
+        product: {
+          ...item.product,
+          id: String(item.product.id),
+          price: Number(item.product.price || 0)
+        },
+        quantity: Math.max(1, Math.min(100, Number(item.quantity) || 1)),
+        selectedColor: item.selectedColor || item.product?.selectedColor || undefined
+      }));
+  } catch (e) {
+    console.warn('Error reading local cart items:', e);
+    return [];
+  }
+}
+
+/**
+ * Saves cart items to localStorage and dispatches a broadcast event.
+ */
+export function saveLocalCartItems(items: CartItem[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = getCartStorageKey();
+    const cleanItems = items.filter((i) => i && i.product && i.quantity > 0);
+    const serialized = JSON.stringify(cleanItems);
+    localStorage.setItem(key, serialized);
+    // Also keep guest key updated if in guest mode
+    if (key.includes('_guest')) {
+      localStorage.setItem('giriraj_cart_items', serialized);
+    }
+    window.dispatchEvent(new CustomEvent('giriraj_cart_updated', { detail: { items: cleanItems } }));
+  } catch (e) {
+    console.warn('Error saving local cart items:', e);
+  }
 }
 
 /**
@@ -25,7 +95,7 @@ export async function fetchCartItemsFromSupabase(): Promise<CartItem[] | null> {
   try {
     const { data: authData } = await supabase.auth.getUser();
     if (!authData?.user?.id) {
-      return null; // Guest user, use client-side state
+      return getLocalCartItems(); // Guest user, use client-side state
     }
 
     const { data, error } = await supabase
@@ -36,11 +106,11 @@ export async function fetchCartItemsFromSupabase(): Promise<CartItem[] | null> {
 
     if (error) {
       console.warn('Supabase cart_items fetch notice:', error.message);
-      return null;
+      return getLocalCartItems();
     }
 
     if (!data || data.length === 0) {
-      return [];
+      return getLocalCartItems();
     }
 
     const cartItems: CartItem[] = data.map((row: any) => {
@@ -69,9 +139,9 @@ export async function fetchCartItemsFromSupabase(): Promise<CartItem[] | null> {
           tags: p.tags || []
         };
       } else {
-        const fallback = INITIAL_PRODUCTS.find((ip) => ip.id === row.product_id);
+        const fallback = INITIAL_PRODUCTS.find((ip) => String(ip.id) === String(row.product_id));
         product = fallback || {
-          id: row.product_id,
+          id: String(row.product_id),
           name: 'Electrical Item',
           brand: 'Giriraj Power',
           category: 'electrical',
@@ -95,15 +165,18 @@ export async function fetchCartItemsFromSupabase(): Promise<CartItem[] | null> {
 
       return {
         product,
-        quantity: Number(row.quantity || 1),
+        quantity: Math.max(1, Math.min(100, Number(row.quantity || 1))),
         selectedColor: row.selected_color || undefined
       };
     });
 
+    if (cartItems.length > 0) {
+      saveLocalCartItems(cartItems);
+    }
     return cartItems;
   } catch (err) {
     console.warn('Error fetching cart from Supabase:', err);
-    return null;
+    return getLocalCartItems();
   }
 }
 

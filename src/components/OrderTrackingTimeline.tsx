@@ -1,5 +1,17 @@
 import React from 'react';
-import { CheckCircle2, PackageCheck, Truck, Home, Clock, AlertCircle, Sparkles } from 'lucide-react';
+import {
+  CheckCircle2,
+  PackageCheck,
+  Truck,
+  Home,
+  Clock,
+  AlertCircle,
+  Sparkles,
+  Phone,
+  User,
+  Star,
+  Navigation
+} from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 
 interface OrderTrackingTimelineProps {
@@ -15,13 +27,37 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
   compact = false,
   borderless = false
 }) => {
-  const status: OrderStatus = order.status || 'pending';
-  const isCancelled = status === 'cancelled';
+  const rawStatus = (order.status || 'pending').toLowerCase();
+  const deliveryStatus = (order.delivery?.status || '').toLowerCase();
+  const isCancelled = rawStatus === 'cancelled';
+  const isDelivered = rawStatus === 'delivered' || deliveryStatus === 'delivered';
+  const isNearDestination = rawStatus === 'near_destination' || deliveryStatus === 'near_destination';
+  const isOutForDelivery =
+    rawStatus === 'out_for_delivery' ||
+    rawStatus === 'shipped' ||
+    deliveryStatus === 'out_for_delivery' ||
+    deliveryStatus === 'picked_up' ||
+    isNearDestination;
+  const isPacked =
+    rawStatus === 'packed' ||
+    Boolean(order.packed_at || order.packedAt) ||
+    isOutForDelivery ||
+    isDelivered;
+  const isPacking =
+    (rawStatus === 'packing' || rawStatus === 'accepted' || rawStatus === 'confirmed') &&
+    !isPacked;
 
-  // Extract timestamps with fallback to camelCase / createdAt
+  // Extract timestamps with fallback
   const placedAtStr = order.placed_at || order.placedAt || order.createdAt;
   const packedAtStr = order.packed_at || order.packedAt;
-  const deliveredAtStr = order.delivered_at || order.deliveredAt;
+  const shippedAtStr =
+    order.shipped_at ||
+    order.shippedAt ||
+    order.out_for_delivery_at ||
+    order.outForDeliveryAt ||
+    order.delivery?.out_for_delivery_at ||
+    order.delivery?.picked_up_at;
+  const deliveredAtStr = order.delivered_at || order.deliveredAt || order.delivery?.delivered_at;
 
   // Format date helper
   const formatTimestamp = (timestamp?: string | null): string | null => {
@@ -45,62 +81,71 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
   const formattedPacked = formatTimestamp(packedAtStr);
   const formattedDelivered = formatTimestamp(deliveredAtStr);
 
-  // Compute active step index (0: Placed, 1: Packed, 2: Delivered)
-  // Statuses: 'pending' | 'accepted' -> step 0 (Placed completed, packing in progress)
-  // 'packing' -> step 1 in progress (Placed completed)
-  // 'out_for_delivery' -> step 1 completed (Packed completed, delivery in progress)
-  // 'delivered' -> step 2 completed
-  const isPlacedDone = !isCancelled && Boolean(placedAtStr || true);
-  const isPackedDone = !isCancelled && (Boolean(packedAtStr) || status === 'out_for_delivery' || status === 'delivered');
-  const isDeliveredDone = !isCancelled && (Boolean(deliveredAtStr) || status === 'delivered');
+  // Dynamic ETA Calculation
+  const etaTimestamp = order.delivery?.estimated_delivery_at
+    ? new Date(order.delivery.estimated_delivery_at).getTime()
+    : order.estimated_delivery_at
+    ? new Date(order.estimated_delivery_at).getTime()
+    : order.estimatedDeliveryTimestamp || (order.createdAt ? new Date(order.createdAt).getTime() + 3600000 : Date.now() + 3600000);
 
-  const isPackingInProgress = !isCancelled && (status === 'accepted' || status === 'packing') && !isPackedDone;
-  const isDeliveryInProgress = !isCancelled && status === 'out_for_delivery' && !isDeliveredDone;
+  const remainingMinutes = Math.max(0, Math.round((etaTimestamp - Date.now()) / 60000));
+  const isPastEta = Date.now() > etaTimestamp;
+
+  const etaDisplay = isDelivered
+    ? 'Delivered'
+    : isPastEta
+    ? 'Arriving shortly • Express delivery'
+    : remainingMinutes > 0
+    ? `Expected in ${remainingMinutes} mins`
+    : 'Arriving momentarily';
+
+  // Delivery Partner Info (Only render if genuinely assigned by backend delivery app)
+  const rawPartner = order.delivery?.delivery_partner || order.deliveryPartner;
+  const partner = rawPartner && rawPartner.name && !rawPartner.name.toLowerCase().includes('bikash') ? rawPartner : undefined;
 
   const steps = [
     {
       id: 'placed',
       title: 'Order Placed',
       subtitle: 'Order confirmed & received',
-      timestampLabel: 'placed_at',
       timestamp: formattedPlaced,
-      rawTimestamp: placedAtStr,
-      isCompleted: isPlacedDone,
+      isCompleted: !isCancelled,
       isInProgress: false,
-      icon: CheckCircle2,
-      activeColor: 'emerald'
+      icon: CheckCircle2
     },
     {
       id: 'packed',
       title: 'Items Packed',
-      subtitle: isPackedDone
+      subtitle: isPacked
         ? 'Packed at Central Kasba Depot'
-        : isPackingInProgress
+        : isPacking
         ? 'Packing materials & quality check'
         : 'Awaiting warehouse pick',
-      timestampLabel: 'packed_at',
       timestamp: formattedPacked,
-      rawTimestamp: packedAtStr,
-      isCompleted: isPackedDone,
-      isInProgress: isPackingInProgress,
-      icon: PackageCheck,
-      activeColor: 'emerald'
+      isCompleted: isPacked && !isCancelled,
+      isInProgress: isPacking && !isCancelled,
+      icon: PackageCheck
     },
     {
       id: 'delivered',
-      title: isDeliveredDone ? 'Delivered' : isDeliveryInProgress ? 'Out for Delivery' : 'Delivery',
-      subtitle: isDeliveredDone
+      title: isDelivered
+        ? 'Delivered'
+        : isNearDestination
+        ? 'Near Your Location'
+        : isOutForDelivery
+        ? 'Out for Delivery'
+        : 'Delivery',
+      subtitle: isDelivered
         ? 'Handed over at doorstep'
-        : isDeliveryInProgress
+        : isNearDestination
+        ? 'Rider within 500m of delivery address'
+        : isOutForDelivery
         ? `Rider en route to ${order.area || 'your address'}`
-        : '60-min express dispatch',
-      timestampLabel: 'delivered_at',
+        : etaDisplay,
       timestamp: formattedDelivered,
-      rawTimestamp: deliveredAtStr,
-      isCompleted: isDeliveredDone,
-      isInProgress: isDeliveryInProgress,
-      icon: isDeliveredDone ? Home : Truck,
-      activeColor: 'emerald'
+      isCompleted: isDelivered && !isCancelled,
+      isInProgress: isOutForDelivery && !isDelivered && !isCancelled,
+      icon: isDelivered ? Home : isNearDestination ? Navigation : Truck
     }
   ];
 
@@ -112,7 +157,7 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
           <span>Order Cancelled</span>
         </div>
         <p className="text-red-600 text-[11px] leading-relaxed pl-6">
-          This order was cancelled. If you were charged online, the refund will be credited back within 2-4 business days.
+          {order.cancel_reason || order.cancellation_reason || 'This order was cancelled. If you were charged online, the refund will be credited back within 2-4 business days.'}
         </p>
         {formattedPlaced && (
           <div className="mt-2 text-[10px] text-red-500 font-semibold pl-6">
@@ -129,33 +174,43 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
         compact ? 'text-xs' : 'text-xs'
       } ${className}`}
     >
-      {/* Header with live status badge */}
-      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
+      {/* Header with dynamic status badge & ETA */}
+      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 flex-wrap">
         <div className="flex items-center gap-1.5 font-bold text-slate-800">
           <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
           <span className="text-xs uppercase tracking-wide text-slate-700">Order Progress</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {isDeliveredDone ? (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {isDelivered ? (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
               <span>Delivered</span>
             </span>
-          ) : isDeliveryInProgress ? (
+          ) : isNearDestination ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300 animate-pulse">
+              <Navigation className="w-3 h-3 text-emerald-600" />
+              <span>Rider Near Your Location • {etaDisplay}</span>
+            </span>
+          ) : isOutForDelivery ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
               <Truck className="w-3 h-3 text-blue-600" />
-              <span>Out for Delivery</span>
+              <span>Out for Delivery • {etaDisplay}</span>
             </span>
-          ) : isPackingInProgress ? (
+          ) : isPacked ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-purple-100 text-purple-900 border border-purple-200">
+              <PackageCheck className="w-3 h-3 text-purple-700" />
+              <span>Packed &amp; Ready • {etaDisplay}</span>
+            </span>
+          ) : isPacking ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 border border-amber-200">
               <PackageCheck className="w-3 h-3 text-amber-700" />
-              <span>Packing Order</span>
+              <span>Packing Order • {etaDisplay}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-slate-200/80 text-slate-700">
               <Sparkles className="w-3 h-3 text-slate-500" />
-              <span>Confirmed</span>
+              <span>Confirmed • {etaDisplay}</span>
             </span>
           )}
         </div>
@@ -171,7 +226,7 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
           <div
             className="absolute inset-y-0 left-0 bg-emerald-500 rounded-full transition-all duration-500"
             style={{
-              width: isDeliveredDone ? '100%' : isPackedDone ? '50%' : '0%'
+              width: isDelivered ? '100%' : isPacked ? '50%' : '0%'
             }}
           />
         </div>
@@ -257,6 +312,41 @@ export const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
           })}
         </div>
       </div>
+
+      {/* Assigned Delivery Partner Card (when dispatched/assigned) */}
+      {partner && partner.name && !isCancelled && (
+        <div className="mt-3.5 pt-3 border-t border-slate-200/70 flex items-center justify-between gap-3 bg-white/80 p-2.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-100">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-900">{partner.name}</span>
+                {partner.rating && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                    <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                    <span>{partner.rating}</span>
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                Delivery Partner {partner.vehicleNumber || partner.vehicle_number ? `• ${partner.vehicleNumber || partner.vehicle_number}` : ''}
+              </div>
+            </div>
+          </div>
+
+          {partner.phone && (
+            <a
+              href={`tel:${partner.phone}`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 active:scale-95 transition-all shrink-0"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span>Call Rider</span>
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 };

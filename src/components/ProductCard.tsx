@@ -92,10 +92,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         className="relative w-full aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3 cursor-pointer flex items-center justify-center"
       >
         <img
-          src={product.image}
+          src={product.image || 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&q=80'}
           alt={product.name}
           className="w-full h-full object-cover"
           loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&q=80';
+          }}
         />
 
         {/* Brand Tag Pill */}

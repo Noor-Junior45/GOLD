@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
-import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
+import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product, CartItem, DeliveryPartner } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
 import { showToast } from '../utils/toast';
@@ -1206,7 +1206,15 @@ export function getStoredOrders(userScopeOverride?: string): Order[] {
     const deletedIds = getDeletedOrderIds();
     return parsed
       .filter(isRealOrder)
-      .filter((o) => !deletedIds.has(String(o.id)));
+      .filter((o) => !deletedIds.has(String(o.id)))
+      .map((o) => {
+        // Strip legacy mock rider data from local caches
+        if (o.deliveryPartner?.name && (o.deliveryPartner.name.includes('Bikash') || o.deliveryPartner.name.includes('⚡'))) {
+          const { deliveryPartner, ...rest } = o;
+          return rest;
+        }
+        return o;
+      });
   } catch (e) {
     console.error('Failed reading orders from storage', e);
     return [];
@@ -1232,6 +1240,53 @@ function notifyOrderListeners(orders: Order[]) {
       console.error('Error notifying order listener', e);
     }
   });
+}
+
+// Delivery partner normalizer
+export function normalizeDeliveryPartner(raw: any): DeliveryPartner | undefined {
+  if (!raw) return undefined;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      if (raw.trim()) {
+        return { name: raw.trim(), phone: '' };
+      }
+      return undefined;
+    }
+  }
+  if (!raw || typeof raw !== 'object') return undefined;
+
+  const name =
+    raw.name ||
+    raw.full_name ||
+    raw.partner_name ||
+    raw.rider_name ||
+    raw.delivery_partner_name ||
+    raw.deliveryPartnerName;
+
+  if (!name || typeof name !== 'string') return undefined;
+
+  const cleanName = name.replace(/⚡/g, '').trim();
+  if (!cleanName) return undefined;
+
+  const phone = raw.phone || raw.phone_number || raw.mobile_number || raw.mobile || '';
+  const vehicleNumber = raw.vehicle_number || raw.vehicleNumber || raw.vehicle_no || raw.vehiclenumber || undefined;
+  const vehicleType = raw.vehicle_type || raw.vehicleType || undefined;
+  const rating = typeof raw.rating === 'number' ? raw.rating : raw.rating ? Number(raw.rating) : 4.8;
+  const currentHub = raw.current_hub || raw.currentHub || raw.hub_name || undefined;
+  const avatarUrl = raw.avatar_url || raw.avatarUrl || undefined;
+
+  return {
+    id: raw.id ? String(raw.id) : undefined,
+    name: cleanName,
+    phone: String(phone || ''),
+    vehicleNumber,
+    vehicleType,
+    rating,
+    currentHub,
+    avatar_url: avatarUrl
+  };
 }
 
 // Global fetch helper for orders - strictly isolates per authenticated user
@@ -1284,51 +1339,238 @@ export async function fetchUserOrders(): Promise<Order[]> {
 
     if (!error && Array.isArray(data)) {
       // Filter strictly by user ownership so that no other user's order can ever pass
-      const dbOrders: Order[] = data
-        .filter((row) => doesOrderBelongToUser(row, user))
-        .map((row) => ({
-          id: String(row.id),
-          customerName: row.recipient_name || row.customer_name || 'Customer',
-          recipientName: row.recipient_name || row.customer_name || 'Customer',
-          phone: row.recipient_phone || row.phone || '',
-          recipientPhone: row.recipient_phone || row.phone || '',
-          customerEmail: row.recipient_email || row.customer_email || undefined,
-          recipientEmail: row.recipient_email || row.customer_email || undefined,
-          address: [row.address_line1, row.address_line2, row.city, row.pincode].filter(Boolean).join(', ') || row.address || row.delivery_address || '',
-          addressLine1: row.address_line1,
-          addressLine2: row.address_line2,
-          city: row.city || 'Kolkata',
-          state: row.state || 'West Bengal',
-          area: row.address_line2 || row.area || 'Salt Lake Sector V',
-          landmark: row.delivery_notes || row.landmark || undefined,
-          deliveryNotes: row.delivery_notes || row.landmark || undefined,
-          pincode: row.pincode || '700091',
-          items: row.items || [],
-          itemTotal: Number(row.subtotal ?? row.item_total ?? 0),
-          subtotal: Number(row.subtotal ?? row.item_total ?? 0),
-          deliveryFee: Number(row.delivery_fee || 0),
-          handlingFee: Number(row.handling_fee || 0),
-          fees: Number(row.fees ?? ((row.delivery_fee || 0) + (row.handling_fee || 0))),
-          discount: Number(row.discount_amount ?? row.discount ?? 0),
-          discountAmount: Number(row.discount_amount ?? row.discount ?? 0),
-          couponCode: row.coupon_code || null,
-          totalAmount: Number(row.total_amount || 0),
-          paymentMethod: (row.payment_method || 'cod').toLowerCase() as any,
-          paymentStatus: (row.payment_status || 'pending').toLowerCase() as any,
-          status: row.status || 'pending',
-          createdAt: row.placed_at || row.updated_at || row.created_at || new Date().toISOString(),
-          placed_at: row.placed_at || row.created_at || undefined,
-          packed_at: row.packed_at || undefined,
-          out_for_delivery_at: row.out_for_delivery_at || row.dispatched_at || undefined,
-          delivered_at: row.delivered_at || undefined,
-          placedAt: row.placed_at || row.created_at || undefined,
-          packedAt: row.packed_at || undefined,
-          outForDeliveryAt: row.out_for_delivery_at || row.dispatched_at || undefined,
-          deliveredAt: row.delivered_at || undefined,
-          estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
-          deliveryPartner: row.delivery_partner || undefined,
-          notes: row.delivery_notes || row.notes || undefined
-        })).filter(isRealOrder);
+      const matchedRows = data.filter((row) => doesOrderBelongToUser(row, user));
+      const orderIds = matchedRows.map((r) => String(r.id));
+
+      // Fetch linked deliveries with delivery partners
+      let deliveriesMap = new Map<string, any>();
+      let trackingEventsMap = new Map<string, any[]>();
+      let orderItemsMap = new Map<string, any[]>();
+      let partnersMap = new Map<string, any>();
+
+      if (orderIds.length > 0) {
+        try {
+          const { data: delivData } = await supabase
+            .from('deliveries')
+            .select('*')
+            .in('order_id', orderIds);
+          if (Array.isArray(delivData)) {
+            delivData.forEach((d) => {
+              if (d.order_id) deliveriesMap.set(String(d.order_id), d);
+            });
+          }
+        } catch (delErr) {
+          console.debug('Deliveries table lookup notice (ignorable if not yet migrated):', delErr);
+        }
+
+        // Collect all partner IDs from deliveries and orders
+        const partnerIds = new Set<string>();
+        deliveriesMap.forEach((deliv) => {
+          if (deliv.delivery_partner_id) partnerIds.add(String(deliv.delivery_partner_id));
+        });
+        matchedRows.forEach((r) => {
+          if (r.delivery_partner_id) partnerIds.add(String(r.delivery_partner_id));
+        });
+
+        if (partnerIds.size > 0) {
+          try {
+            const { data: partnerRows } = await supabase
+              .from('delivery_partners')
+              .select('*')
+              .in('id', Array.from(partnerIds));
+            if (Array.isArray(partnerRows)) {
+              partnerRows.forEach((p) => {
+                if (p.id) partnersMap.set(String(p.id), p);
+              });
+            }
+          } catch (pErr) {
+            console.debug('delivery_partners table lookup notice:', pErr);
+          }
+        }
+
+        // Also prefetch active delivery partners if not fully mapped
+        try {
+          const { data: allPartners } = await supabase
+            .from('delivery_partners')
+            .select('*')
+            .limit(50);
+          if (Array.isArray(allPartners)) {
+            allPartners.forEach((p) => {
+              if (p.id) partnersMap.set(String(p.id), p);
+            });
+          }
+        } catch (allPErr) {
+          console.debug('delivery_partners general lookup notice:', allPErr);
+        }
+
+        try {
+          const { data: eventsData } = await supabase
+            .from('delivery_tracking_events')
+            .select('*')
+            .in('order_id', orderIds)
+            .order('created_at', { ascending: true });
+          if (Array.isArray(eventsData)) {
+            eventsData.forEach((ev) => {
+              if (ev.order_id) {
+                const oid = String(ev.order_id);
+                if (!trackingEventsMap.has(oid)) trackingEventsMap.set(oid, []);
+                trackingEventsMap.get(oid)!.push(ev);
+              }
+            });
+          }
+        } catch (evErr) {
+          console.debug('Tracking events lookup notice:', evErr);
+        }
+
+        try {
+          const { data: oiData } = await supabase
+            .from('order_items')
+            .select('*')
+            .in('order_id', orderIds);
+          if (Array.isArray(oiData)) {
+            oiData.forEach((item) => {
+              if (item.order_id) {
+                const oid = String(item.order_id);
+                if (!orderItemsMap.has(oid)) orderItemsMap.set(oid, []);
+                orderItemsMap.get(oid)!.push(item);
+              }
+            });
+          }
+        } catch (oiErr) {
+          console.debug('Order items lookup notice:', oiErr);
+        }
+      }
+
+      const dbOrders: Order[] = matchedRows
+        .map((row) => {
+          const oid = String(row.id);
+          const linkedDelivery = deliveriesMap.get(oid);
+          const linkedEvents = trackingEventsMap.get(oid) || [];
+          const linkedOrderItems = orderItemsMap.get(oid) || [];
+
+          // Map items from JSON or relational order_items table
+          let finalItems: CartItem[] = Array.isArray(row.items) && row.items.length > 0 ? row.items : [];
+          if (finalItems.length === 0 && linkedOrderItems.length > 0) {
+            finalItems = linkedOrderItems.map((oi) => ({
+              quantity: oi.quantity || 1,
+              selectedColor: oi.selected_color || oi.color || undefined,
+              product: {
+                id: oi.product_id || String(oi.id),
+                name: oi.product_name || 'Electrical Supply',
+                brand: oi.brand || 'Giriraj Power',
+                category: 'electrical' as const,
+                subCategory: 'Supplies',
+                price: Number(oi.price_at_purchase || 0),
+                originalPrice: Number(oi.price_at_purchase || 0),
+                discountPercentage: 0,
+                unit: oi.unit || 'piece',
+                rating: 4.8,
+                reviewsCount: 12,
+                deliveryMinutes: 60,
+                image: oi.product_image || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+                inStock: true,
+                stockCount: 100,
+                isEmergency: false,
+                specs: {},
+                description: oi.product_name || '',
+                tags: []
+              }
+            }));
+          }
+
+          // Dynamic estimated delivery timestamp calculation
+          let etaTimestamp = Date.now() + 3600000;
+          if (linkedDelivery?.estimated_delivery_at) {
+            const parsed = new Date(linkedDelivery.estimated_delivery_at).getTime();
+            if (!isNaN(parsed) && parsed > 0) etaTimestamp = parsed;
+          } else if (row.estimated_delivery_at) {
+            const parsed = new Date(row.estimated_delivery_at).getTime();
+            if (!isNaN(parsed) && parsed > 0) etaTimestamp = parsed;
+          } else if (row.estimated_delivery_timestamp) {
+            etaTimestamp = Number(row.estimated_delivery_timestamp);
+          }
+
+          // Effective Status Calculation
+          let rawStatus = (row.status || 'pending').toLowerCase();
+          if (linkedDelivery?.status) {
+            const dStatus = linkedDelivery.status.toLowerCase();
+            if (dStatus === 'delivered') rawStatus = 'delivered';
+            else if (dStatus === 'near_destination') rawStatus = 'near_destination';
+            else if (dStatus === 'out_for_delivery' || dStatus === 'picked_up') rawStatus = 'out_for_delivery';
+          }
+
+          // Delivery Partner Resolution from backend DB
+          const partnerFromDeliveryId = linkedDelivery?.delivery_partner_id
+            ? partnersMap.get(String(linkedDelivery.delivery_partner_id))
+            : undefined;
+          const partnerFromOrderId = row.delivery_partner_id
+            ? partnersMap.get(String(row.delivery_partner_id))
+            : undefined;
+          const rawPartner =
+            partnerFromDeliveryId ||
+            partnerFromOrderId ||
+            linkedDelivery?.delivery_partner ||
+            row.delivery_partner ||
+            undefined;
+
+          const partnerData = normalizeDeliveryPartner(rawPartner);
+
+          return {
+            id: oid,
+            customerName: row.recipient_name || row.customer_name || 'Customer',
+            recipientName: row.recipient_name || row.customer_name || 'Customer',
+            phone: row.recipient_phone || row.phone || '',
+            recipientPhone: row.recipient_phone || row.phone || '',
+            customerEmail: row.recipient_email || row.customer_email || undefined,
+            recipientEmail: row.recipient_email || row.customer_email || undefined,
+            address: [row.address_line1, row.address_line2, row.city, row.pincode].filter(Boolean).join(', ') || row.address || row.delivery_address || '',
+            addressLine1: row.address_line1,
+            addressLine2: row.address_line2,
+            city: row.city || 'Kolkata',
+            state: row.state || 'West Bengal',
+            area: row.address_line2 || row.area || 'Kasba / South Kolkata',
+            landmark: row.landmark || row.delivery_notes || undefined,
+            deliveryNotes: row.delivery_notes || row.admin_notes || row.landmark || undefined,
+            pincode: row.pincode || '700042',
+            items: finalItems,
+            itemTotal: Number(row.subtotal ?? row.item_total ?? 0),
+            subtotal: Number(row.subtotal ?? row.item_total ?? 0),
+            deliveryFee: Number(row.delivery_fee || 0),
+            handlingFee: Number(row.handling_fee || 0),
+            fees: Number(row.fees ?? ((row.delivery_fee || 0) + (row.handling_fee || 0))),
+            discount: Number(row.discount_amount ?? row.discount ?? 0),
+            discountAmount: Number(row.discount_amount ?? row.discount ?? 0),
+            couponCode: row.coupon_code || null,
+            totalAmount: Number(row.total_amount || 0),
+            paymentMethod: (row.payment_method || 'cod').toLowerCase() as any,
+            paymentStatus: (row.payment_status || 'pending').toLowerCase() as any,
+            status: rawStatus as any,
+            createdAt: row.placed_at || row.updated_at || row.created_at || new Date().toISOString(),
+            placed_at: row.placed_at || row.created_at || undefined,
+            confirmed_at: row.confirmed_at || undefined,
+            packed_at: row.packed_at || undefined,
+            shipped_at: row.shipped_at || linkedDelivery?.out_for_delivery_at || linkedDelivery?.picked_up_at || undefined,
+            out_for_delivery_at: linkedDelivery?.out_for_delivery_at || row.out_for_delivery_at || row.shipped_at || undefined,
+            near_destination_at: linkedDelivery?.near_destination_at || undefined,
+            delivered_at: linkedDelivery?.delivered_at || row.delivered_at || undefined,
+            cancelled_at: row.cancelled_at || undefined,
+            cancel_reason: row.cancel_reason || row.cancellation_reason || undefined,
+            placedAt: row.placed_at || row.created_at || undefined,
+            confirmedAt: row.confirmed_at || undefined,
+            packedAt: row.packed_at || undefined,
+            shippedAt: row.shipped_at || linkedDelivery?.out_for_delivery_at || linkedDelivery?.picked_up_at || undefined,
+            outForDeliveryAt: linkedDelivery?.out_for_delivery_at || row.out_for_delivery_at || row.shipped_at || undefined,
+            nearDestinationAt: linkedDelivery?.near_destination_at || undefined,
+            deliveredAt: linkedDelivery?.delivered_at || row.delivered_at || undefined,
+            cancelledAt: row.cancelled_at || undefined,
+            estimated_delivery_at: linkedDelivery?.estimated_delivery_at || row.estimated_delivery_at || undefined,
+            estimatedDeliveryTimestamp: etaTimestamp,
+            deliveryPartner: partnerData,
+            delivery: linkedDelivery,
+            trackingEvents: linkedEvents,
+            notes: row.delivery_notes || row.notes || undefined
+          };
+        }).filter(isRealOrder);
 
       // Merge DB orders and local orders strictly for this user
       const mergedMap = new Map<string, Order>();
@@ -1372,6 +1614,10 @@ export async function fetchUserOrders(): Promise<Order[]> {
   }
 }
 
+let deliveriesChannel: ReturnType<typeof supabase.channel> | null = null;
+let trackingChannel: ReturnType<typeof supabase.channel> | null = null;
+let partnersChannel: ReturnType<typeof supabase.channel> | null = null;
+
 /**
  * Fetch and Subscribe to Orders from Supabase with per-user data isolation
  */
@@ -1384,7 +1630,7 @@ export function subscribeToOrders(listener: OrderListener): () => void {
   // Fetch initial orders for the active user
   fetchUserOrders();
 
-  // Initialize singleton channel only once across all subscribers
+  // Initialize singleton channels only once across all subscribers
   if (!ordersChannel) {
     ordersChannel = supabase
       .channel('orders_realtime_feed')
@@ -1398,13 +1644,148 @@ export function subscribeToOrders(listener: OrderListener): () => void {
       .subscribe();
   }
 
+  if (!deliveriesChannel) {
+    deliveriesChannel = supabase
+      .channel('deliveries_realtime_feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deliveries' },
+        () => {
+          fetchUserOrders();
+        }
+      )
+      .subscribe();
+  }
+
+  if (!trackingChannel) {
+    trackingChannel = supabase
+      .channel('tracking_events_realtime_feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'delivery_tracking_events' },
+        () => {
+          fetchUserOrders();
+        }
+      )
+      .subscribe();
+  }
+
+  if (!partnersChannel) {
+    partnersChannel = supabase
+      .channel('partners_realtime_feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'delivery_partners' },
+        () => {
+          fetchUserOrders();
+        }
+      )
+      .subscribe();
+  }
+
   return () => {
     orderListeners.delete(listener);
-    if (orderListeners.size === 0 && ordersChannel) {
-      supabase.removeChannel(ordersChannel);
-      ordersChannel = null;
+    if (orderListeners.size === 0) {
+      if (ordersChannel) {
+        supabase.removeChannel(ordersChannel);
+        ordersChannel = null;
+      }
+      if (deliveriesChannel) {
+        supabase.removeChannel(deliveriesChannel);
+        deliveriesChannel = null;
+      }
+      if (trackingChannel) {
+        supabase.removeChannel(trackingChannel);
+        trackingChannel = null;
+      }
+      if (partnersChannel) {
+        supabase.removeChannel(partnersChannel);
+        partnersChannel = null;
+      }
     }
   };
+}
+
+export function isValidUUID(str?: string | null): boolean {
+  if (!str || typeof str !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+}
+
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/**
+ * Resiliently inserts records into Supabase by automatically detecting and stripping
+ * any columns that do not exist in the remote database schema cache (PGRST204 / 42703).
+ */
+export async function adaptiveInsert(
+  tableName: string,
+  initialPayload: Record<string, any> | Record<string, any>[]
+): Promise<{ data: any; error: any }> {
+  const isArray = Array.isArray(initialPayload);
+  let currentPayload: any = isArray
+    ? initialPayload.map((p) => ({ ...p }))
+    : { ...initialPayload };
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      const query = supabase.from(tableName).insert(currentPayload);
+      const { data, error } = isArray ? await query.select() : await query.select().single();
+
+      if (!error) {
+        return { data, error: null };
+      }
+
+      const errMsg = error.message || '';
+
+      // Check for missing column error in schema cache or PostgreSQL
+      const match =
+        errMsg.match(/Could not find the '([^']+)' column/) ||
+        errMsg.match(/Could not find the "([^"]+)" column/) ||
+        errMsg.match(/column "([^"]+)" of relation "[^"]+" does not exist/) ||
+        errMsg.match(/column "([^"]+)" does not exist/);
+
+      if (match && match[1]) {
+        const col = match[1];
+        console.warn(`[Supabase adaptiveInsert] Table '${tableName}' does not have column '${col}'. Stripping and retrying.`);
+        if (isArray) {
+          currentPayload.forEach((p: any) => {
+            delete p[col];
+          });
+        } else {
+          delete currentPayload[col];
+        }
+        continue;
+      }
+
+      // Check for UUID format / syntax error on id
+      if ((error.code === '22P02' || errMsg.includes('invalid input syntax for type uuid')) && !isArray && currentPayload.id) {
+        console.warn(`[Supabase adaptiveInsert] UUID syntax error for id in '${tableName}'. Stripping custom id and retrying.`);
+        delete currentPayload.id;
+        continue;
+      }
+
+      // If relation/table does not exist (42P01), stop retrying
+      if (error.code === '42P01' || errMsg.includes('does not exist')) {
+        console.warn(`[Supabase adaptiveInsert] Table '${tableName}' does not exist on remote Supabase.`);
+        return { data: null, error };
+      }
+
+      return { data: null, error };
+    } catch (e: any) {
+      console.warn(`[Supabase adaptiveInsert] Exception on attempt ${attempt} for '${tableName}':`, e);
+      return { data: null, error: e };
+    }
+  }
+  return { data: null, error: { message: `Exceeded adaptive insert attempts for ${tableName}` } };
 }
 
 /**
@@ -1417,6 +1798,15 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     getUserScopeKeyFromUser(authData?.user) ||
     (order.customerEmail ? getUserScopeKeyFromUser({ email: order.customerEmail }) : null) ||
     (order.phone ? getUserScopeKeyFromUser({ phone: order.phone }) : null);
+
+  // Guarantee order has a valid UUID primary key for Supabase UUID columns
+  const orderDbId = isValidUUID(order.id) ? order.id : generateUUID();
+  const humanReadableNumber = order.id && order.id.startsWith('GP-') ? order.id : `GP-${Math.floor(100000 + Math.random() * 900000)}`;
+  
+  order.id = orderDbId;
+  if (!order.trackingNumber) {
+    order.trackingNumber = humanReadableNumber;
+  }
 
   // If this order ID was previously in deleted list, remove it from blacklist
   if (order.id) {
@@ -1481,35 +1871,40 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     };
   });
 
-  const itemsSummaryText = formattedItemsForDb
-    .map((it) => {
-      const colStr = it.selectedColor ? ` [${it.selectedColor}]` : '';
-      return `${it.quantity}x ${it.product?.name || 'Item'}${colStr}`;
-    })
-    .join(', ');
-
   // 3. Insert into Supabase `orders` and `order_items` tables
   const orderRowPayload: Record<string, any> = {
+    id: orderDbId,
     user_id: userId,
-    status: 'pending',
-    recipient_name: order.recipientName || order.customerName,
-    recipient_phone: order.recipientPhone || order.phone,
+    customer_name: order.customerName || order.recipientName || 'Customer',
+    recipient_name: order.recipientName || order.customerName || 'Customer',
+    phone: order.phone || order.recipientPhone || '',
+    recipient_phone: order.recipientPhone || order.phone || '',
+    customer_email: order.customerEmail || order.recipientEmail || null,
     recipient_email: order.recipientEmail || order.customerEmail || null,
-    address_line1: order.addressLine1 || order.address,
+    address: order.address || order.addressLine1 || '',
+    address_line1: order.addressLine1 || order.address || '',
     address_line2: order.addressLine2 || order.area || '',
+    area: order.area || order.addressLine2 || '',
     city: order.city || 'Kolkata',
     state: order.state || 'West Bengal',
-    pincode: order.pincode,
+    pincode: order.pincode || '',
     address_label: order.addressLabel || 'Home',
+    landmark: order.landmark || order.deliveryNotes || null,
     delivery_notes: order.deliveryNotes || order.landmark || order.notes || null,
     items: formattedItemsForDb,
-    subtotal: order.subtotal ?? order.itemTotal,
+    item_total: order.itemTotal ?? order.subtotal ?? 0,
+    subtotal: order.subtotal ?? order.itemTotal ?? 0,
+    discount: order.discount ?? order.discountAmount ?? 0,
     discount_amount: order.discountAmount ?? order.discount ?? 0,
+    delivery_fee: order.deliveryFee ?? 0,
+    handling_fee: order.handlingFee ?? 0,
     fees: order.fees ?? ((order.deliveryFee || 0) + (order.handlingFee || 0)),
     total_amount: order.totalAmount,
     coupon_code: order.couponCode || null,
     payment_method: (order.paymentMethod || 'COD').toUpperCase(),
     payment_status: order.paymentStatus || 'pending',
+    status: order.status || 'pending',
+    tracking_number: order.trackingNumber || humanReadableNumber,
     placed_at: order.createdAt || new Date().toISOString(),
     updated_at: order.createdAt || new Date().toISOString(),
     packed_at: null,
@@ -1521,60 +1916,16 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
 
   let insertedOrder: any = null;
 
-  // Step 1: Insert into `orders` table
-  const { data: orderData, error: orderInsertError } = await supabase
-    .from('orders')
-    .insert(orderRowPayload)
-    .select()
-    .single();
+  // Step 1: Resilient insert into `orders` table using adaptive schema matching
+  const { data: orderData, error: orderInsertError } = await adaptiveInsert('orders', orderRowPayload);
 
   if (orderInsertError) {
-    console.warn('Primary orders insert returned error, testing compatibility format:', orderInsertError.message);
-    // Compatibility fallback in case table has legacy column names
-    const legacyRowPayload: Record<string, any> = {
-      id: order.id,
-      user_id: userId,
-      customer_name: order.customerName,
-      phone: order.phone,
-      customer_email: order.customerEmail || null,
-      address: order.address,
-      area: order.area,
-      landmark: order.landmark || null,
-      pincode: order.pincode,
-      items: formattedItemsForDb,
-      item_total: order.itemTotal,
-      delivery_fee: order.deliveryFee,
-      handling_fee: order.handlingFee,
-      discount: order.discount,
-      total_amount: order.totalAmount,
-      payment_method: order.paymentMethod,
-      payment_status: order.paymentStatus,
-      status: order.status,
-      updated_at: order.createdAt || new Date().toISOString(),
-      placed_at: order.createdAt || new Date().toISOString(),
-      packed_at: null,
-      delivered_at: null,
-      estimated_delivery_timestamp: order.estimatedDeliveryTimestamp,
-      delivery_partner: order.deliveryPartner || null,
-      notes: order.notes || null
-    };
-
-    const { data: legacyData, error: legacyError } = await supabase
-      .from('orders')
-      .insert(legacyRowPayload)
-      .select()
-      .single();
-
-    if (legacyError) {
-      console.error('Fatal error inserting into orders table:', legacyError);
-      throw new Error(`Failed to save order to Supabase: ${legacyError.message || orderInsertError.message}`);
-    }
-    insertedOrder = legacyData;
+    console.warn('Adaptive orders insert returned error, saving locally:', orderInsertError.message);
   } else {
     insertedOrder = orderData;
   }
 
-  const savedOrderId = insertedOrder?.id || order.id;
+  const savedOrderId = insertedOrder?.id || orderDbId;
 
   // Step 2: Insert one row into `order_items` for EACH item in cart
   if (Array.isArray(order.items) && order.items.length > 0) {
@@ -1583,6 +1934,7 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       const baseName = item.product?.name || 'Item';
       const displayName = color ? `${baseName} (${color} Color)` : baseName;
       return {
+        id: generateUUID(),
         order_id: savedOrderId,
         product_id: item.product?.id ? String(item.product.id) : null,
         product_name: displayName,
@@ -1594,13 +1946,38 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       };
     });
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItemsPayload);
-
+    const { error: itemsError } = await adaptiveInsert('order_items', orderItemsPayload);
     if (itemsError) {
       console.warn('Notice inserting into order_items table (items persisted in orders.items):', itemsError.message);
     }
+  }
+
+  // Step 3: Insert initial record in `deliveries` table for delivery app integration
+  try {
+    const deliveryId = generateUUID();
+    const etaIso = new Date(order.estimatedDeliveryTimestamp || Date.now() + 3600000).toISOString();
+    await adaptiveInsert('deliveries', {
+      id: deliveryId,
+      order_id: savedOrderId,
+      status: 'unassigned',
+      estimated_delivery_at: etaIso,
+      delivery_notes: order.deliveryNotes || 'Standard express dispatch'
+    });
+
+    // Step 4: Insert initial milestone event in `delivery_tracking_events`
+    await adaptiveInsert('delivery_tracking_events', {
+      id: generateUUID(),
+      order_id: savedOrderId,
+      delivery_id: deliveryId,
+      stage: 'placed',
+      title: 'Order Placed',
+      description: 'Order placed by customer and sent to warehouse',
+      customer_message: 'Your order has been received and is being verified.',
+      actor: 'customer',
+      location_name: order.area || 'Kasba Hub'
+    });
+  } catch (deliveryInitErr) {
+    console.debug('Deliveries table auto-init notice:', deliveryInitErr);
   }
 
   // Secure stock decrement via PostgreSQL function
@@ -1647,25 +2024,13 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
  * Updates order status in Supabase
  */
 export async function updateOrderStatusInFirestore(orderId: string, newStatus: OrderStatus): Promise<boolean> {
-  let updatedDeliveryPartner = undefined;
-
-  if (newStatus === 'out_for_delivery') {
-    updatedDeliveryPartner = {
-      name: 'Bikash Mondal ⚡',
-      phone: '+91 87774 00280',
-      vehicleNumber: 'WB 07 C 1089',
-      currentHub: 'Giriraj Power Kasba Hub'
-    };
-  }
-
   if (activeUserScope) {
     const currentOrders = getStoredOrders(activeUserScope);
     const updatedOrders = currentOrders.map((o) => {
       if (o.id === orderId) {
         return {
           ...o,
-          status: newStatus,
-          deliveryPartner: updatedDeliveryPartner || o.deliveryPartner
+          status: newStatus
         };
       }
       return o;
@@ -1679,9 +2044,6 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
     const updatePayload: Record<string, unknown> = {
       status: newStatus
     };
-    if (updatedDeliveryPartner) {
-      updatePayload.delivery_partner = updatedDeliveryPartner;
-    }
     await supabase.from('orders').update(updatePayload).eq('id', orderId);
     return true;
   } catch (error) {
@@ -2113,10 +2475,17 @@ export async function fetchUserAddresses(): Promise<SavedAddress[]> {
   } catch (e) {
     console.warn('Addresses fetch notice:', e);
   }
-  return [];
+  return getStoredAddresses();
 }
 
+let lastNotifiedAddressesJson = '';
+
 function notifyAddressListeners(addresses: SavedAddress[]) {
+  const currentJson = JSON.stringify(addresses);
+  if (currentJson === lastNotifiedAddressesJson) {
+    return;
+  }
+  lastNotifiedAddressesJson = currentJson;
   addressListeners.forEach((l) => {
     try {
       l(addresses);
@@ -2126,12 +2495,49 @@ function notifyAddressListeners(addresses: SavedAddress[]) {
   });
 }
 
+// Cross-tab and real-time addresses broadcast channel
+const addressBroadcastChannel =
+  typeof window !== 'undefined' && 'BroadcastChannel' in window
+    ? new BroadcastChannel('giriraj_saved_addresses_sync')
+    : null;
+
+let lastBroadcastJson = '';
+
+export function broadcastAddressUpdate(addresses: SavedAddress[], userId?: string): void {
+  const currentJson = JSON.stringify(addresses);
+  if (currentJson === lastBroadcastJson) {
+    return;
+  }
+  lastBroadcastJson = currentJson;
+
+  // 1. Dispatch custom event for current window
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('giriraj_addresses_updated', { detail: addresses }));
+  }
+
+  // 2. Broadcast to other tabs on same device/browser
+  try {
+    if (addressBroadcastChannel) {
+      addressBroadcastChannel.postMessage({ type: 'ADDRESSES_UPDATED', addresses, userId });
+    }
+  } catch {}
+
+  // 3. Broadcast across devices via Supabase Realtime WebSocket channel
+  try {
+    const channelName = userId ? `address_sync_${userId}` : 'addresses_realtime_feed';
+    const channel = supabase.channel(channelName);
+    channel.send({
+      type: 'broadcast',
+      event: 'address_updated',
+      payload: { addresses, userId }
+    }).catch(() => {});
+  } catch {}
+}
+
 export function subscribeToAddresses(listener: AddressListener): () => void {
   addressListeners.add(listener);
   const stored = getStoredAddresses();
   listener(stored);
-
-  fetchUserAddresses();
 
   if (!addressesChannel) {
     addressesChannel = supabase
@@ -2141,11 +2547,40 @@ export function subscribeToAddresses(listener: AddressListener): () => void {
         { event: '*', schema: 'public', table: 'saved_addresses' },
         () => fetchUserAddresses()
       )
+      .on('broadcast', { event: 'address_updated' }, () => {
+        fetchUserAddresses();
+      })
       .subscribe();
+  }
+
+  // Cross-tab custom event
+  const handleCustomEvent = (e: any) => {
+    if (e.detail && Array.isArray(e.detail)) {
+      listener(e.detail);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('giriraj_addresses_updated', handleCustomEvent);
+  }
+
+  // BroadcastChannel message
+  const handleBroadcast = (ev: MessageEvent) => {
+    if (ev.data?.type === 'ADDRESSES_UPDATED' && Array.isArray(ev.data?.addresses)) {
+      listener(ev.data.addresses);
+    }
+  };
+  if (addressBroadcastChannel) {
+    addressBroadcastChannel.addEventListener('message', handleBroadcast);
   }
 
   return () => {
     addressListeners.delete(listener);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('giriraj_addresses_updated', handleCustomEvent);
+    }
+    if (addressBroadcastChannel) {
+      addressBroadcastChannel.removeEventListener('message', handleBroadcast);
+    }
     if (addressListeners.size === 0 && addressesChannel) {
       supabase.removeChannel(addressesChannel);
       addressesChannel = null;
@@ -2169,6 +2604,7 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<{ s
   safeSetItem('giriraj_saved_addresses', JSON.stringify(updated));
   safeSetItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(address));
   notifyAddressListeners(updated);
+  broadcastAddressUpdate(updated, userId || undefined);
 
   const rowPayload = {
     id: address.id,
@@ -2286,6 +2722,7 @@ export async function deleteAddressFromFirestore(id: string): Promise<{ success:
   }
 
   notifyAddressListeners(updated);
+  broadcastAddressUpdate(updated, userId || undefined);
 
   // 1. Call Server Delete API
   try {

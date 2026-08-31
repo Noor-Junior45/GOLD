@@ -528,7 +528,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </button>
 
-          {/* 2. Orders History */}
+          {/* 2. Orders */}
           <button
             onClick={() => setSubPage('orders')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -538,7 +538,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-base sm:text-lg font-normal text-slate-800">Orders History</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Orders</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -565,7 +565,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
-          {/* 4. Saved Payment Modes */}
+          {/* 4. Payment */}
           <button
             onClick={() => setSubPage('payments')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -575,13 +575,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <CreditCard className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-base sm:text-lg font-normal text-slate-800">Saved Payment Modes</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Payment</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
-          {/* 5. Delivery Addresses */}
+          {/* 5. Addresses */}
           <button
             onClick={() => setSubPage('addresses')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -591,13 +591,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-base sm:text-lg font-normal text-slate-800">Delivery Addresses</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Addresses</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
-          {/* 6. Communication Preferences */}
+          {/* 6. Notifications */}
           <button
             onClick={() => setSubPage('notifications')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -607,7 +607,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Bell className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-base sm:text-lg font-normal text-slate-800">Communication Preferences</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Notifications</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />

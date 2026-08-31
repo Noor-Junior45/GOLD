@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { SwipeableItem } from './SwipeableItem';
-import { createFirestoreOrder, getStoredAddresses, cleanPhoneAutofill } from '../services/supabaseService';
+import { createFirestoreOrder, getStoredAddresses, cleanPhoneAutofill, generateUUID } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS, getProductColorOptions } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
@@ -188,6 +188,8 @@ export const CartView: React.FC<CartViewProps> = ({
   const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [stockWarning, setStockWarning] = useState<string | null>(null);
 
   // Synchronize address updates if effectiveAddress or userProfile prop changes
   useEffect(() => {
@@ -459,9 +461,10 @@ export const CartView: React.FC<CartViewProps> = ({
       localStorage.getItem('giriraj_user_name') ||
       'Customer';
 
+    setCheckoutError(null);
     if (!resolvedPhone || !resolvedName || !resolvedAddress) {
       hapticError();
-      alert('Please provide your name, mobile phone, and delivery address.');
+      setCheckoutError('Please provide your name, 10-digit mobile phone number, and delivery address.');
       return;
     }
 
@@ -484,8 +487,12 @@ export const CartView: React.FC<CartViewProps> = ({
     const fees = deliveryFee + handlingFee;
     const couponCode = promoCode.trim() ? promoCode.trim().toUpperCase() : null;
 
+    const orderUuid = generateUUID();
+    const humanOrderNumber = `GP-${Math.floor(100000 + Math.random() * 900000)}`;
+
     const newOrder: Order = {
-      id: `GP-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: orderUuid,
+      trackingNumber: humanOrderNumber,
       customerName: recipientName,
       recipientName,
       phone: recipientPhone,
@@ -517,12 +524,7 @@ export const CartView: React.FC<CartViewProps> = ({
       status: 'pending',
       createdAt: new Date().toISOString(),
       estimatedDeliveryTimestamp: Date.now() + currentArea.deliveryMinutes * 60 * 1000,
-      deliveryPartner: {
-        name: 'Bikash Mondal ⚡',
-        phone: '+91 87774 00280',
-        vehicleNumber: 'WB 07 C 1089 (Express Runner)',
-        currentHub: `${currentArea.name} Hub`
-      }
+      deliveryPartner: undefined
     };
 
     try {
@@ -571,7 +573,7 @@ export const CartView: React.FC<CartViewProps> = ({
     } catch (err: any) {
       hapticError();
       console.error('Failed to place order:', err);
-      alert(err?.message || 'An error occurred while placing your order. Please try again.');
+      setCheckoutError(err?.message || 'An error occurred while placing your order. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -750,6 +752,21 @@ export const CartView: React.FC<CartViewProps> = ({
         )}
 
         {/* 4. CART ITEM LIST - Consolidated Single Box */}
+        {stockWarning && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-2 text-xs font-bold text-amber-900 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{stockWarning}</span>
+            </div>
+            <button
+              onClick={() => setStockWarning(null)}
+              className="text-amber-700 hover:text-amber-900 p-1 font-bold text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs divide-y divide-slate-100 mb-5 overflow-hidden">
           {displayedItems.map((item) => {
             const product = item.product;
@@ -875,12 +892,15 @@ export const CartView: React.FC<CartViewProps> = ({
                           type="button"
                           onClick={() => {
                             if (isOutOfStock) {
-                              alert('This item is currently out of stock in local inventory. Please inquire via WhatsApp for custom batch dispatch.');
+                              setStockWarning('This item is currently out of stock in local inventory.');
+                              hapticWarning();
                             } else if (item.quantity < stockQty) {
+                              setStockWarning(null);
                               onUpdateQuantity(product.id, 1, item.selectedColor);
                               syncCartItemToSupabase(product.id, item.quantity + 1, item.selectedColor);
                             } else {
-                              alert(`Maximum available stock is ${stockQty} units.`);
+                              setStockWarning(`Maximum available stock for ${product.name} is ${stockQty} units.`);
+                              hapticWarning();
                             }
                           }}
                           disabled={isOutOfStock || item.quantity >= stockQty}
@@ -1479,6 +1499,13 @@ export const CartView: React.FC<CartViewProps> = ({
                   </span>
                 </div>
               </div>
+
+              {checkoutError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-start gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  <span>{checkoutError}</span>
+                </div>
+              )}
 
               <button
                 type="button"
