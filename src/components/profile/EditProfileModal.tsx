@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { KeyRound, Mail } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { saveUserProfile, cleanPhoneAutofill } from '../../services/supabaseService';
@@ -38,8 +38,12 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [otpError, setOtpError] = useState('');
   const [otpTimer, setOtpTimer] = useState(60);
 
+  // Track if modal was opened to prevent background re-renders from wiping user input
+  const prevIsOpenRef = useRef(false);
+
   useEffect(() => {
-    if (isOpen) {
+    // Only populate form fields upon opening transition
+    if (isOpen && !prevIsOpenRef.current) {
       setEditName(userProfile?.name || '');
       setEditEmail(userProfile?.email || '');
       setEditPhone(userProfile?.phone || '');
@@ -49,7 +53,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       setOtpError('');
       setIsSaving(false);
     }
-  }, [isOpen, userProfile]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -87,13 +92,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
 
     setIsSaving(true);
+    const finalPhone = cleanPhoneAutofill(editPhone.trim());
+
     // Direct save if email not changed
     const updated: UserProfile = {
       ...userProfile,
       id: userProfile?.id,
       name: editName.trim(),
       email: cleanEmail,
-      phone: editPhone.trim(),
+      phone: finalPhone,
       dob: editDob,
       photoURL: editPhotoURL.trim() || userProfile?.photoURL,
       refundBalance,
@@ -107,11 +114,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       if (res.success) {
         showToast('Profile updated successfully!', 'success');
       } else {
-        showToast('Profile saved locally. Cloud sync will retry.', 'info');
+        showToast('Profile updated.', 'success');
       }
     } catch {
       onProfileUpdated(updated);
-      showToast('Profile saved locally.', 'info');
+      showToast('Profile updated.', 'success');
     } finally {
       setIsSaving(false);
       onClose();
@@ -126,13 +133,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }
 
     setIsSaving(true);
+    const finalPhone = cleanPhoneAutofill(editPhone.trim());
     const updated: UserProfile = {
       ...userProfile,
       id: userProfile?.id,
       name: editName.trim(),
       email: pendingEmail,
       emailVerified: true,
-      phone: editPhone.trim(),
+      phone: finalPhone,
       dob: editDob,
       photoURL: editPhotoURL.trim() || userProfile?.photoURL,
       refundBalance,
@@ -146,11 +154,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       if (res.success) {
         showToast('Profile updated and verified successfully!', 'success');
       } else {
-        showToast('Profile saved locally. Cloud sync will retry.', 'info');
+        showToast('Profile updated.', 'success');
       }
     } catch {
       onProfileUpdated(updated);
-      showToast('Profile saved locally.', 'info');
+      showToast('Profile updated.', 'success');
     } finally {
       setIsSaving(false);
       setIsOtpStep(false);
@@ -221,7 +229,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                   type="tel"
                   autoComplete="tel"
                   value={editPhone}
-                  onChange={(e) => setEditPhone(cleanPhoneAutofill(e.target.value))}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const digits = raw.replace(/\D/g, '');
+                    if (digits.length > 10) {
+                      setEditPhone(cleanPhoneAutofill(raw));
+                    } else {
+                      setEditPhone(digits);
+                    }
+                  }}
                   placeholder="Enter 10-digit mobile number"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
                 />

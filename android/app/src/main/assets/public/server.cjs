@@ -1397,6 +1397,22 @@ ${itemsListText}
         } catch (sbErr) {
           console.warn("[Server Profile Sync Notice]:", sbErr);
         }
+        try {
+          await sb.from("profiles").upsert({
+            id: user_id,
+            phone: phone || null,
+            full_name: full_name || null,
+            name: full_name || null,
+            email: email || null,
+            avatar_url: avatar_url || null,
+            dob: dob || null,
+            birth_date: dob || null,
+            date_of_birth: dob || null,
+            updated_at: (/* @__PURE__ */ new Date()).toISOString()
+          }, { onConflict: "id" });
+        } catch (sbErr2) {
+          console.warn("[Server Profiles Table Sync Notice]:", sbErr2);
+        }
       }
       return res.status(200).json({ success: true, message: "Profile synchronized" });
     } catch (err) {
