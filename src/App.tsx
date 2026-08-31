@@ -47,6 +47,7 @@ import {
   getInitialAuthSession,
   fetchProductsFromSupabase,
   fetchUserProfileFromSupabase,
+  subscribeToUserProfile,
   safeGetItem,
   safeSetItem,
   getUserScopeKeyFromUser,
@@ -143,10 +144,13 @@ export default function App() {
   useEffect(() => {
     let unsubscribeOrders: (() => void) | null = null;
     let unsubscribeAddresses: (() => void) | null = null;
+    let unsubscribeProfile: (() => void) | null = null;
+    let activeUserId: string | null = null;
 
-    const setupUserSubscriptions = () => {
+    const setupUserSubscriptions = (userId?: string) => {
       if (unsubscribeOrders) unsubscribeOrders();
       if (unsubscribeAddresses) unsubscribeAddresses();
+      if (unsubscribeProfile) unsubscribeProfile();
 
       unsubscribeOrders = subscribeToOrders((allOrders) => {
         setOrders(allOrders);
@@ -155,6 +159,38 @@ export default function App() {
       unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
         setSavedAddresses(allAddrs);
       });
+
+      if (userId) {
+        activeUserId = userId;
+        unsubscribeProfile = subscribeToUserProfile(userId, (freshData) => {
+          setUserProfile((prev) => {
+            const updated: UserProfile = {
+              ...(prev || ({} as UserProfile)),
+              ...freshData,
+              id: userId,
+              name: freshData.name || prev?.name || 'Customer',
+              phone: freshData.phone || prev?.phone || '',
+              email: freshData.email || prev?.email || '',
+              dob: freshData.dob || prev?.dob || '',
+              photoURL: freshData.photoURL || prev?.photoURL,
+              walletBalance: freshData.walletBalance ?? prev?.walletBalance ?? 0,
+              refundBalance: freshData.refundBalance ?? prev?.refundBalance ?? 0,
+              cashbackBalance: freshData.cashbackBalance ?? prev?.cashbackBalance ?? 0,
+            };
+            const scope = getUserScopeKeyFromUser({ id: userId, email: updated.email, phone: updated.phone });
+            if (scope) {
+              safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(updated));
+            }
+            return updated;
+          });
+          if (freshData.phone) {
+            setUserPhone(freshData.phone);
+          }
+          if (freshData.name) {
+            setUserName(freshData.name);
+          }
+        });
+      }
 
       fetchCartItemsFromSupabase()
         .then((dbCart) => {
@@ -165,9 +201,45 @@ export default function App() {
         .catch(console.warn);
     };
 
+    // Fast sync when user returns to the tab or focuses the app
+    const syncProfileOnFocus = () => {
+      if (activeUserId && document.visibilityState === 'visible') {
+        fetchUserProfileFromSupabase(activeUserId).then((cloudProf) => {
+          if (cloudProf) {
+            setUserProfile((prev) => {
+              const merged: UserProfile = {
+                ...(prev || ({} as UserProfile)),
+                ...cloudProf,
+                id: activeUserId!,
+                name: cloudProf.name || prev?.name || 'Customer',
+                phone: cloudProf.phone || prev?.phone || '',
+                email: cloudProf.email || prev?.email || '',
+                dob: cloudProf.dob || prev?.dob || '',
+                photoURL: cloudProf.photoURL || prev?.photoURL,
+                walletBalance: cloudProf.walletBalance ?? prev?.walletBalance ?? 0,
+                refundBalance: cloudProf.refundBalance ?? prev?.refundBalance ?? 0,
+                cashbackBalance: cloudProf.cashbackBalance ?? prev?.cashbackBalance ?? 0,
+              };
+              const scope = getUserScopeKeyFromUser({ id: activeUserId!, email: merged.email, phone: merged.phone });
+              if (scope) {
+                safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(merged));
+              }
+              return merged;
+            });
+            if (cloudProf.phone) setUserPhone(cloudProf.phone);
+            if (cloudProf.name) setUserName(cloudProf.name);
+          }
+        }).catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', syncProfileOnFocus);
+    window.addEventListener('focus', syncProfileOnFocus);
+
     // Initial session check
     getInitialAuthSession().then(({ session, user }) => {
       if (user) {
+        activeUserId = user.id;
         const scope = getUserScopeKeyFromUser(user);
         if (scope) {
           setActiveUserScope(scope);
@@ -225,8 +297,9 @@ export default function App() {
           });
         setUserPhone(phone || null);
         setUserName(name);
-        setupUserSubscriptions();
+        setupUserSubscriptions(user.id);
       } else {
+        activeUserId = null;
         setUserProfile(null);
         setUserPhone(null);
         setUserName('');
@@ -247,6 +320,7 @@ export default function App() {
 
     const unsubAuth = onAuthStateChange((event, session, user) => {
       if (user) {
+        activeUserId = user.id;
         const scope = getUserScopeKeyFromUser(user);
         if (scope) {
           setActiveUserScope(scope);
@@ -304,8 +378,9 @@ export default function App() {
           });
         setUserPhone(phone || null);
         setUserName(name);
-        setupUserSubscriptions();
+        setupUserSubscriptions(user.id);
       } else {
+        activeUserId = null;
         setActiveUserScope(null);
         setUserProfile(null);
         setUserPhone(null);
@@ -317,6 +392,7 @@ export default function App() {
     });
 
     const handleLogoutEvent = () => {
+      activeUserId = null;
       setUserProfile(null);
       setUserPhone(null);
       setUserName('');
@@ -378,9 +454,12 @@ export default function App() {
     return () => {
       unsubAuth();
       supabase.removeChannel(prodChannel);
+      document.removeEventListener('visibilitychange', syncProfileOnFocus);
+      window.removeEventListener('focus', syncProfileOnFocus);
       window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
       if (unsubscribeOrders) unsubscribeOrders();
       if (unsubscribeAddresses) unsubscribeAddresses();
+      if (unsubscribeProfile) unsubscribeProfile();
     };
   }, []);
 

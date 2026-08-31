@@ -938,6 +938,7 @@ export async function saveUserProfile(
   try {
     const { data: authData } = await supabase.auth.getUser();
     if (authData?.user?.id) {
+      broadcastUserProfileUpdate(updated, authData.user.id);
       const syncResult = await syncUserProfileToSupabase(authData.user.id, {
         phone: data.phone,
         full_name: data.name,
@@ -946,12 +947,146 @@ export async function saveUserProfile(
         dob: data.dob
       });
       return { success: syncResult.success, profile: updated, error: syncResult.error };
+    } else {
+      broadcastUserProfileUpdate(updated);
     }
   } catch (err: any) {
+    broadcastUserProfileUpdate(updated);
     return { success: true, profile: updated };
   }
 
   return { success: true, profile: updated };
+}
+
+// Cross-tab and real-time profile broadcast
+const profileBroadcastChannel =
+  typeof window !== 'undefined' && 'BroadcastChannel' in window
+    ? new BroadcastChannel('giriraj_user_profile_sync')
+    : null;
+
+type ProfileListener = (profile: Partial<UserProfile>) => void;
+const profileListeners: Set<ProfileListener> = new Set();
+let userProfileRealtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+export function broadcastUserProfileUpdate(profile: Partial<UserProfile>, userId?: string): void {
+  // 1. Dispatch custom event for current window
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('giriraj_profile_updated', { detail: profile }));
+  }
+
+  // 2. Broadcast to other tabs on same device/browser
+  try {
+    if (profileBroadcastChannel) {
+      profileBroadcastChannel.postMessage({ type: 'PROFILE_UPDATED', profile, userId });
+    }
+  } catch {}
+
+  // 3. Broadcast across devices via Supabase Realtime WebSocket channel
+  if (userId) {
+    try {
+      const channelName = `profile_sync_${userId}`;
+      const channel = supabase.channel(channelName);
+      channel.send({
+        type: 'broadcast',
+        event: 'profile_updated',
+        payload: { ...profile, userId }
+      }).catch(() => {});
+    } catch {}
+  }
+}
+
+/**
+ * Subscribes to real-time user profile changes across all devices, browsers, and tabs
+ */
+export function subscribeToUserProfile(
+  userId: string,
+  callback: (profile: Partial<UserProfile>) => void
+): () => void {
+  if (!userId) return () => {};
+
+  profileListeners.add(callback);
+
+  // Set up Supabase Realtime Channel if not already active
+  const channelName = `profile_sync_${userId}`;
+  if (!userProfileRealtimeChannel) {
+    userProfileRealtimeChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_profiles', filter: `user_id=eq.${userId}` },
+        (payload: any) => {
+          const newRow = payload.new || {};
+          const mapped: Partial<UserProfile> = {};
+          if (newRow.phone) mapped.phone = cleanPhoneAutofill(newRow.phone);
+          if (newRow.full_name || newRow.name) mapped.name = newRow.full_name || newRow.name;
+          if (newRow.email) mapped.email = newRow.email;
+          if (newRow.avatar_url) mapped.photoURL = newRow.avatar_url;
+          if (newRow.dob) mapped.dob = newRow.dob;
+          if (newRow.wallet_balance !== undefined) mapped.walletBalance = Number(newRow.wallet_balance);
+          if (newRow.refund_balance !== undefined) mapped.refundBalance = Number(newRow.refund_balance);
+          if (newRow.cashback_balance !== undefined) mapped.cashbackBalance = Number(newRow.cashback_balance);
+
+          profileListeners.forEach((cb) => cb(mapped));
+          fetchUserProfileFromSupabase(userId);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        (payload: any) => {
+          const newRow = payload.new || {};
+          const mapped: Partial<UserProfile> = {};
+          if (newRow.phone) mapped.phone = cleanPhoneAutofill(newRow.phone);
+          if (newRow.full_name || newRow.name) mapped.name = newRow.full_name || newRow.name;
+          if (newRow.email) mapped.email = newRow.email;
+          if (newRow.avatar_url) mapped.photoURL = newRow.avatar_url;
+          if (newRow.dob || newRow.birth_date || newRow.date_of_birth) mapped.dob = newRow.dob || newRow.birth_date || newRow.date_of_birth;
+
+          profileListeners.forEach((cb) => cb(mapped));
+          fetchUserProfileFromSupabase(userId);
+        }
+      )
+      .on('broadcast', { event: 'profile_updated' }, ({ payload }) => {
+        if (payload) {
+          profileListeners.forEach((cb) => cb(payload));
+          fetchUserProfileFromSupabase(userId);
+        }
+      })
+      .subscribe();
+  }
+
+  // Cross-tab broadcast listener
+  const handleCustomEvent = (e: any) => {
+    if (e.detail) {
+      callback(e.detail);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('giriraj_profile_updated', handleCustomEvent);
+  }
+
+  const handleBroadcastMsg = (ev: MessageEvent) => {
+    if (ev.data?.type === 'PROFILE_UPDATED' && ev.data?.profile) {
+      callback(ev.data.profile);
+    }
+  };
+  if (profileBroadcastChannel) {
+    profileBroadcastChannel.addEventListener('message', handleBroadcastMsg);
+  }
+
+  return () => {
+    profileListeners.delete(callback);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('giriraj_profile_updated', handleCustomEvent);
+    }
+    if (profileBroadcastChannel) {
+      profileBroadcastChannel.removeEventListener('message', handleBroadcastMsg);
+    }
+    if (profileListeners.size === 0 && userProfileRealtimeChannel) {
+      supabase.removeChannel(userProfileRealtimeChannel);
+      userProfileRealtimeChannel = null;
+    }
+  };
 }
 
 export function clearUserProfile(): void {
