@@ -13,7 +13,8 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import {
   saveUserProfile,
-  signInWithGoogle
+  signInWithGoogle,
+  fetchUserProfileFromSupabase
 } from '../services/supabaseService';
 
 interface LoginPageProps {
@@ -102,15 +103,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
       if (loginError) {
         setError(loginError.message || 'Invalid email or password.');
       } else if (data.user) {
+        const cloudProf = await fetchUserProfileFromSupabase(data.user.id);
         const userFullName =
+          cloudProf?.name ||
           data.user.user_metadata?.full_name ||
           cleanEmail.split('@')[0] ||
           'Giriraj Customer';
-        saveUserProfile({
-          email: cleanEmail,
-          name: userFullName,
-        });
-        onAuthSuccess(data.user.phone || '', userFullName, cleanEmail);
+        const finalPhone = cloudProf?.phone || data.user.phone || data.user.user_metadata?.phone || '';
+
+        onAuthSuccess(finalPhone, userFullName, cleanEmail);
         navigate('/');
       }
     } catch (err: unknown) {
@@ -155,12 +156,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
       if (signUpError) {
         setError(signUpError.message || 'Failed to create account.');
       } else if (data.session && data.user) {
-        const userFullName = cleanEmail.split('@')[0] || 'Giriraj Customer';
-        saveUserProfile({
-          email: cleanEmail,
-          name: userFullName,
-        });
-        onAuthSuccess(data.user.phone || '', userFullName, cleanEmail);
+        const cloudProf = await fetchUserProfileFromSupabase(data.user.id);
+        const userFullName =
+          cloudProf?.name ||
+          cleanEmail.split('@')[0] ||
+          'Giriraj Customer';
+        const finalPhone = cloudProf?.phone || data.user.phone || data.user.user_metadata?.phone || '';
+
+        onAuthSuccess(finalPhone, userFullName, cleanEmail);
         navigate('/');
       } else {
         setInfoMessage(`Account created! We have sent a confirmation link to ${cleanEmail}.`);

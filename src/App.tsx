@@ -178,7 +178,7 @@ export default function App() {
         const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
         const email = user.email || local?.email || '';
         const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || undefined;
-        const dob = local?.dob || '';
+        const dob = userMeta.dob || userMeta.birth_date || userMeta.date_of_birth || local?.dob || '';
         const prof: UserProfile = {
           id: user.id,
           phone,
@@ -257,7 +257,7 @@ export default function App() {
         const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
         const email = user.email || local?.email || '';
         const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || undefined;
-        const dob = local?.dob || '';
+        const dob = userMeta.dob || userMeta.birth_date || userMeta.date_of_birth || local?.dob || '';
         const prof: UserProfile = {
           id: user.id,
           phone,
@@ -698,20 +698,39 @@ export default function App() {
 
   const isAuthenticated = Boolean(userProfile?.id || userProfile?.email || userProfile?.phone || userPhone);
 
-  const handleAuthSuccess = (phone: string, name: string, email?: string) => {
+  const handleAuthSuccess = async (phone: string, name: string, email?: string) => {
     const photo = safeGetItem('giriraj_user_photo') || undefined;
+    let finalPhone = phone || '';
+    let finalName = name || '';
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.id) {
+        const cloudProf = await fetchUserProfileFromSupabase(user.id);
+        if (cloudProf) {
+          if (cloudProf.phone) finalPhone = cloudProf.phone;
+          if (cloudProf.name) finalName = cloudProf.name;
+          setUserProfile(cloudProf);
+          setUserPhone(cloudProf.phone || null);
+          setUserName(cloudProf.name || '');
+          navigate('/');
+          return;
+        }
+      }
+    } catch {}
+
     const prof: UserProfile = {
       id: userProfile?.id,
-      phone: phone || '',
-      name: name || '',
+      phone: finalPhone,
+      name: finalName || 'Customer',
       email: email || '',
       emailVerified: Boolean(email),
       photoURL: photo,
       dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
     };
     setUserProfile(prof);
-    setUserPhone(phone || null);
-    setUserName(name || '');
+    setUserPhone(finalPhone || null);
+    setUserName(finalName || '');
     navigate('/');
   };
 

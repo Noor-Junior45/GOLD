@@ -131,10 +131,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   // Receiver Phone
   const [receiverPhone, setReceiverPhone] = useState(() => {
     if (activeAddress?.receiverPhone) return activeAddress.receiverPhone;
-    if (userPhone) return userPhone;
     if (userProfile?.phone) return userProfile.phone;
-    const stored = localStorage.getItem('giriraj_user_phone');
-    if (stored && stored !== '8777400280') return stored;
+    if (userPhone) return userPhone;
     return '';
   });
   const [formError, setFormError] = useState<string | null>(null);
@@ -196,17 +194,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       // Auto-fill Receiver Phone
       if (activeAddress?.receiverPhone) {
         setReceiverPhone(activeAddress.receiverPhone);
-      } else if (userPhone) {
-        setReceiverPhone(userPhone);
       } else if (userProfile?.phone) {
         setReceiverPhone(userProfile.phone);
+      } else if (userPhone) {
+        setReceiverPhone(userPhone);
       } else {
-        const storedPhone = localStorage.getItem('giriraj_user_phone');
-        if (storedPhone && storedPhone !== '8777400280') {
-          setReceiverPhone(storedPhone);
-        } else {
-          setReceiverPhone('');
-        }
+        setReceiverPhone('');
       }
     }
   }, [isOpen, activeAddress, userProfile, userPhone]);

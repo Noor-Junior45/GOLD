@@ -165,7 +165,7 @@ export const CartView: React.FC<CartViewProps> = ({
     return effectiveAddress?.receiverName || userProfile?.name || localStorage.getItem('giriraj_user_name') || '';
   });
   const [phone, setPhone] = useState(() => {
-    return userPhone || effectiveAddress?.receiverPhone || userProfile?.phone || localStorage.getItem('giriraj_user_phone') || '';
+    return userProfile?.phone || userPhone || effectiveAddress?.receiverPhone || '';
   });
   const [email, setEmail] = useState(() => {
     return userProfile?.email || localStorage.getItem('giriraj_user_email') || '';
@@ -306,9 +306,7 @@ export const CartView: React.FC<CartViewProps> = ({
       userProfile?.id ||
       userProfile?.phone ||
       userProfile?.email ||
-      userPhone ||
-      localStorage.getItem('giriraj_user_phone') ||
-      localStorage.getItem('giriraj_user_email')
+      userPhone
     );
 
     if (!isLoggedIn) {
@@ -348,9 +346,7 @@ export const CartView: React.FC<CartViewProps> = ({
       userProfile?.id ||
       userProfile?.phone ||
       userProfile?.email ||
-      userPhone ||
-      localStorage.getItem('giriraj_user_phone') ||
-      localStorage.getItem('giriraj_user_email')
+      userPhone
     );
 
     if (!isLoggedIn) {
@@ -452,10 +448,9 @@ export const CartView: React.FC<CartViewProps> = ({
       currentArea.name;
     const resolvedPhone =
       phone.trim() ||
-      effectiveAddress?.receiverPhone ||
-      userPhone ||
       userProfile?.phone ||
-      localStorage.getItem('giriraj_user_phone') ||
+      userPhone ||
+      effectiveAddress?.receiverPhone ||
       '';
     const resolvedName =
       customerName.trim() ||

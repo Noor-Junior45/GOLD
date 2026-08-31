@@ -105,7 +105,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             name: freshProf.name || userProfile.name,
             phone: freshProf.phone || userProfile.phone,
             email: freshProf.email || userProfile.email,
-            dob: freshProf.dob || userProfile.dob,
+            dob: freshProf.dob !== undefined ? freshProf.dob : userProfile.dob,
             photoURL: freshProf.photoURL || userProfile.photoURL,
             walletBalance: freshProf.walletBalance ?? userProfile.walletBalance,
             refundBalance: freshProf.refundBalance ?? userProfile.refundBalance,

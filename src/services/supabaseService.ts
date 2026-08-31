@@ -585,6 +585,7 @@ export function onAuthStateChange(
       const name = userMeta.full_name || userMeta.name || userMeta.custom_claims?.name || localProf?.name || (user.email ? user.email.split('@')[0] : 'Customer');
       const email = user.email || userMeta.email || localProf?.email || '';
       const photoURL = userMeta.avatar_url || userMeta.picture || localProf?.photoURL || undefined;
+      const dob = userMeta.dob || userMeta.birth_date || userMeta.date_of_birth || localProf?.dob || '';
       const emailVerified = !!user.email_confirmed_at || !!user.confirmed_at;
 
       saveUserProfile(
@@ -593,6 +594,7 @@ export function onAuthStateChange(
           name,
           email,
           photoURL,
+          dob,
           emailVerified
         },
         scope || undefined
@@ -610,91 +612,228 @@ export function onAuthStateChange(
 }
 
 /**
- * Syncs user profile data into Supabase `user_profiles` table with RLS and server-side backup
+ * Syncs user profile data into Supabase `user_profiles` and `profiles` tables, and Auth user metadata
  */
 export async function syncUserProfileToSupabase(
   userId: string,
-  profile: { phone?: string; full_name?: string; email?: string; avatar_url?: string; dob?: string }
+  profile: { phone?: string; full_name?: string; email?: string; avatar_url?: string; dob?: string; address?: string }
 ): Promise<{ success: boolean; error?: string }> {
+  if (!userId) return { success: false, error: 'No user ID' };
+
   const cleanPhone = profile.phone !== undefined ? cleanPhoneAutofill(profile.phone) : undefined;
-  const payload: Record<string, any> = {
+  
+  const userProfilesPayload: Record<string, any> = {
     user_id: userId,
     updated_at: new Date().toISOString()
   };
 
-  if (cleanPhone !== undefined) {
-    payload.phone = cleanPhone || null;
+  const profilesPayload: Record<string, any> = {
+    id: userId,
+    updated_at: new Date().toISOString()
+  };
+
+  if (cleanPhone !== undefined && cleanPhone !== '') {
+    userProfilesPayload.phone = cleanPhone;
+    profilesPayload.phone = cleanPhone;
   }
-  if (profile.full_name !== undefined) {
-    payload.full_name = profile.full_name || null;
+  if (profile.full_name !== undefined && profile.full_name !== '') {
+    userProfilesPayload.full_name = profile.full_name;
+    profilesPayload.full_name = profile.full_name;
+    profilesPayload.name = profile.full_name;
   }
-  if (profile.email !== undefined) {
-    payload.email = profile.email || null;
+  if (profile.email !== undefined && profile.email !== '') {
+    userProfilesPayload.email = profile.email;
+    profilesPayload.email = profile.email;
   }
-  if (profile.avatar_url !== undefined) {
-    payload.avatar_url = profile.avatar_url || null;
+  if (profile.avatar_url !== undefined && profile.avatar_url !== '') {
+    userProfilesPayload.avatar_url = profile.avatar_url;
+    profilesPayload.avatar_url = profile.avatar_url;
   }
-  if (profile.dob !== undefined) {
-    payload.dob = profile.dob || null;
+  if (profile.dob !== undefined && profile.dob !== '') {
+    userProfilesPayload.dob = profile.dob;
+    profilesPayload.dob = profile.dob;
+    profilesPayload.birth_date = profile.dob;
+    profilesPayload.date_of_birth = profile.dob;
+  }
+  if (profile.address !== undefined && profile.address !== '') {
+    userProfilesPayload.address = profile.address;
+    profilesPayload.address = profile.address;
   }
 
-  // 1. Also sync to server API backup
+  // 1. Update Supabase Auth User Metadata so it travels automatically with the session across devices
+  try {
+    const metaUpdates: Record<string, any> = {};
+    if (cleanPhone) metaUpdates.phone = cleanPhone;
+    if (profile.full_name) {
+      metaUpdates.full_name = profile.full_name;
+      metaUpdates.name = profile.full_name;
+    }
+    if (profile.email) metaUpdates.email = profile.email;
+    if (profile.avatar_url) {
+      metaUpdates.avatar_url = profile.avatar_url;
+      metaUpdates.picture = profile.avatar_url;
+    }
+    if (profile.dob) {
+      metaUpdates.dob = profile.dob;
+      metaUpdates.birth_date = profile.dob;
+      metaUpdates.date_of_birth = profile.dob;
+    }
+    if (profile.address) metaUpdates.address = profile.address;
+
+    if (Object.keys(metaUpdates).length > 0) {
+      await supabase.auth.updateUser({ data: metaUpdates });
+    }
+  } catch (err) {
+    console.debug('Auth metadata update notice:', err);
+  }
+
+  // 2. Also sync to server API backup
   try {
     fetch(`${API_BASE_URL}/api/user-profile`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(userProfilesPayload)
     }).catch(() => {});
   } catch {}
 
-  // 2. Direct Supabase Upsert
-  try {
-    const { error } = await supabase
-      .from('user_profiles')
-      .upsert(payload, { onConflict: 'user_id' });
+  let upsertSuccess = false;
+  let lastError: string | undefined;
 
-    if (error) {
-      console.warn('user_profiles upsert notice:', error.message);
-      enqueuePendingSync({
-        type: 'profile',
-        payload
-      });
-      return { success: false, error: error.message };
+  // 3. Upsert to `user_profiles` table
+  try {
+    const { error: upError } = await supabase
+      .from('user_profiles')
+      .upsert(userProfilesPayload, { onConflict: 'user_id' });
+
+    if (!upError) {
+      upsertSuccess = true;
+    } else {
+      lastError = upError.message;
+      console.warn('user_profiles upsert notice:', upError.message);
     }
-    return { success: true };
   } catch (err: any) {
-    const msg = err?.message || String(err);
-    console.warn('Profile sync error:', msg);
+    lastError = err?.message || String(err);
+  }
+
+  // 4. Also upsert to `profiles` table (supports both table schemas)
+  try {
+    const { error: profError } = await supabase
+      .from('profiles')
+      .upsert(profilesPayload, { onConflict: 'id' });
+
+    if (!profError) {
+      upsertSuccess = true;
+    } else {
+      console.debug('profiles table upsert notice:', profError.message);
+    }
+  } catch {}
+
+  if (!upsertSuccess && lastError) {
     enqueuePendingSync({
       type: 'profile',
-      payload
+      payload: userProfilesPayload
     });
-    return { success: false, error: msg };
+    return { success: false, error: lastError };
   }
+
+  return { success: true };
 }
 
 /**
- * Fetch profile directly from Supabase `user_profiles` table
+ * Fetch profile directly from Supabase (`user_profiles`, `profiles`, and Auth user metadata)
  */
 export async function fetchUserProfileFromSupabase(userId: string): Promise<UserProfile | null> {
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+  if (!userId) return null;
 
-    if (!error && data) {
+  try {
+    let cloudPhone = '';
+    let cloudName = '';
+    let cloudEmail = '';
+    let cloudAvatar: string | undefined = undefined;
+    let cloudDob: string | undefined = undefined;
+    let walletBal = 0;
+    let refundBal = 0;
+    let cashbackBal = 0;
+    let found = false;
+
+    // 1. Check user_profiles table (keyed on user_id)
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        found = true;
+        if (data.phone) cloudPhone = cleanPhoneAutofill(data.phone);
+        if (data.full_name || data.name) cloudName = data.full_name || data.name;
+        if (data.email) cloudEmail = data.email;
+        if (data.avatar_url || data.photo_url || data.picture) cloudAvatar = data.avatar_url || data.photo_url || data.picture;
+        if (data.dob || data.birth_date || data.date_of_birth) cloudDob = data.dob || data.birth_date || data.date_of_birth;
+        if (data.wallet_balance !== undefined) walletBal = Number(data.wallet_balance || 0);
+        if (data.refund_balance !== undefined) refundBal = Number(data.refund_balance || 0);
+        if (data.cashback_balance !== undefined) cashbackBal = Number(data.cashback_balance || 0);
+      }
+    } catch {}
+
+    // 2. Check profiles table (keyed on id)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        found = true;
+        if (data.phone && !cloudPhone) cloudPhone = cleanPhoneAutofill(data.phone);
+        if ((data.full_name || data.name) && !cloudName) cloudName = data.full_name || data.name;
+        if (data.email && !cloudEmail) cloudEmail = data.email;
+        if ((data.avatar_url || data.photo_url || data.picture) && !cloudAvatar) cloudAvatar = data.avatar_url || data.photo_url || data.picture;
+        if ((data.dob || data.birth_date || data.date_of_birth) && !cloudDob) cloudDob = data.dob || data.birth_date || data.date_of_birth;
+      }
+    } catch {}
+
+    // 3. Check Supabase Auth metadata for any phone, dob, name, avatar saved directly in auth session
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id === userId) {
+        const meta = authData.user.user_metadata || {};
+        if (!cloudPhone && (authData.user.phone || meta.phone)) {
+          cloudPhone = cleanPhoneAutofill(authData.user.phone || meta.phone);
+          found = true;
+        }
+        if (!cloudName && (meta.full_name || meta.name)) {
+          cloudName = meta.full_name || meta.name;
+          found = true;
+        }
+        if (!cloudEmail && authData.user.email) {
+          cloudEmail = authData.user.email;
+          found = true;
+        }
+        if (!cloudDob && (meta.dob || meta.birth_date || meta.date_of_birth)) {
+          cloudDob = meta.dob || meta.birth_date || meta.date_of_birth;
+          found = true;
+        }
+        if (!cloudAvatar && (meta.avatar_url || meta.picture || meta.photoURL)) {
+          cloudAvatar = meta.avatar_url || meta.picture || meta.photoURL;
+          found = true;
+        }
+      }
+    } catch {}
+
+    if (found) {
       const mappedProfile: UserProfile = {
-        name: data.full_name || 'Customer',
-        phone: data.phone || '',
-        email: data.email || '',
+        name: cloudName || 'Customer',
+        phone: cloudPhone,
+        email: cloudEmail,
         emailVerified: true,
-        photoURL: data.avatar_url || undefined,
-        dob: data.dob || undefined,
-        walletBalance: Number(data.wallet_balance || 0),
-        refundBalance: Number(data.refund_balance || 0),
-        cashbackBalance: Number(data.cashback_balance || 0)
+        photoURL: cloudAvatar,
+        dob: cloudDob,
+        walletBalance: walletBal,
+        refundBalance: refundBal,
+        cashbackBalance: cashbackBal
       };
 
       const scope = `uid_${userId}`;
