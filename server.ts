@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -13,8 +12,9 @@ import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Resolve directory in both CJS bundle and ESM environments cleanly
+const __filenameResolved = typeof __filename !== "undefined" ? __filename : process.cwd();
+const __dirnameResolved = typeof __dirname !== "undefined" ? __dirname : path.dirname(__filenameResolved);
 
 // Resend API Key Helper
 function getResendApiKey(): string | null {
@@ -1044,8 +1044,8 @@ async function startServer() {
       const candidates = [
         path.join(process.cwd(), "public", "version.json"),
         path.join(process.cwd(), "dist", "version.json"),
-        path.join(__dirname, "public", "version.json"),
-        path.join(__dirname, "version.json"),
+        path.join(__dirnameResolved, "public", "version.json"),
+        path.join(__dirnameResolved, "version.json"),
       ];
       for (const p of candidates) {
         if (fs.existsSync(p)) {

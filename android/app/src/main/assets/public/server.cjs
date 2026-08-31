@@ -25,7 +25,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_fs = __toESM(require("fs"), 1);
-var import_url = require("url");
 var import_vite = require("vite");
 var import_genai = require("@google/genai");
 var import_dotenv = __toESM(require("dotenv"), 1);
@@ -34,10 +33,9 @@ var import_express_rate_limit = __toESM(require("express-rate-limit"), 1);
 var import_zod = require("zod");
 var import_crypto = __toESM(require("crypto"), 1);
 var import_supabase_js = require("@supabase/supabase-js");
-var import_meta = {};
 import_dotenv.default.config();
-var __filename = (0, import_url.fileURLToPath)(import_meta.url);
-var __dirname = import_path.default.dirname(__filename);
+var __filenameResolved = typeof __filename !== "undefined" ? __filename : process.cwd();
+var __dirnameResolved = typeof __dirname !== "undefined" ? __dirname : import_path.default.dirname(__filenameResolved);
 function getResendApiKey() {
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
   if (!apiKey || apiKey === "MY_RESEND_API_KEY" || !apiKey.startsWith("re_") || apiKey.length < 20) {
@@ -867,8 +865,8 @@ async function startServer() {
       const candidates = [
         import_path.default.join(process.cwd(), "public", "version.json"),
         import_path.default.join(process.cwd(), "dist", "version.json"),
-        import_path.default.join(__dirname, "public", "version.json"),
-        import_path.default.join(__dirname, "version.json")
+        import_path.default.join(__dirnameResolved, "public", "version.json"),
+        import_path.default.join(__dirnameResolved, "version.json")
       ];
       for (const p of candidates) {
         if (import_fs.default.existsSync(p)) {
