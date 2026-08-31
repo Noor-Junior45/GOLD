@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { SwipeableItem } from './SwipeableItem';
-import { createFirestoreOrder, getStoredAddresses } from '../services/supabaseService';
+import { createFirestoreOrder, getStoredAddresses, cleanPhoneAutofill } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS, getProductColorOptions } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
@@ -1550,8 +1550,9 @@ export const CartView: React.FC<CartViewProps> = ({
               <label className="block text-xs font-bold text-slate-700 mb-1">Mobile Phone Number</label>
               <input
                 type="tel"
+                autoComplete="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(cleanPhoneAutofill(e.target.value))}
                 placeholder="Mobile number"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none"
               />

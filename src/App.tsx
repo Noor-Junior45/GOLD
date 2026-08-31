@@ -46,7 +46,9 @@ import {
   onAuthStateChange,
   getInitialAuthSession,
   fetchProductsFromSupabase,
+  fetchUserProfileFromSupabase,
   safeGetItem,
+  safeSetItem,
   getUserScopeKeyFromUser,
   setActiveUserScope
 } from './services/supabaseService';
@@ -190,6 +192,37 @@ export default function App() {
           cashbackBalance: local?.cashbackBalance || 0
         };
         setUserProfile(prof);
+        fetchUserProfileFromSupabase(user.id)
+          .then((cloudProf) => {
+            if (cloudProf) {
+              const merged: UserProfile = {
+                ...prof,
+                ...cloudProf,
+                id: user.id,
+                name: cloudProf.name || prof.name,
+                phone: cloudProf.phone || prof.phone,
+                email: cloudProf.email || prof.email,
+                dob: cloudProf.dob || prof.dob,
+                photoURL: cloudProf.photoURL || prof.photoURL,
+                walletBalance: cloudProf.walletBalance ?? prof.walletBalance,
+                refundBalance: cloudProf.refundBalance ?? prof.refundBalance,
+                cashbackBalance: cloudProf.cashbackBalance ?? prof.cashbackBalance,
+              };
+              setUserProfile(merged);
+              if (scope) {
+                safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(merged));
+              }
+              if (merged.phone) {
+                setUserPhone(merged.phone);
+              }
+              if (merged.name) {
+                setUserName(merged.name);
+              }
+            }
+          })
+          .catch((err) => {
+            console.debug('[Supabase] Background profile fetch skipped/failed:', err);
+          });
         setUserPhone(phone || null);
         setUserName(name);
         setupUserSubscriptions();
@@ -238,6 +271,37 @@ export default function App() {
           cashbackBalance: local?.cashbackBalance || 0
         };
         setUserProfile(prof);
+        fetchUserProfileFromSupabase(user.id)
+          .then((cloudProf) => {
+            if (cloudProf) {
+              const merged: UserProfile = {
+                ...prof,
+                ...cloudProf,
+                id: user.id,
+                name: cloudProf.name || prof.name,
+                phone: cloudProf.phone || prof.phone,
+                email: cloudProf.email || prof.email,
+                dob: cloudProf.dob || prof.dob,
+                photoURL: cloudProf.photoURL || prof.photoURL,
+                walletBalance: cloudProf.walletBalance ?? prof.walletBalance,
+                refundBalance: cloudProf.refundBalance ?? prof.refundBalance,
+                cashbackBalance: cloudProf.cashbackBalance ?? prof.cashbackBalance,
+              };
+              setUserProfile(merged);
+              if (scope) {
+                safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(merged));
+              }
+              if (merged.phone) {
+                setUserPhone(merged.phone);
+              }
+              if (merged.name) {
+                setUserName(merged.name);
+              }
+            }
+          })
+          .catch((err) => {
+            console.debug('[Supabase] Background profile fetch skipped/failed:', err);
+          });
         setUserPhone(phone || null);
         setUserName(name);
         setupUserSubscriptions();

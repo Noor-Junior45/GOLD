@@ -23,7 +23,8 @@ import {
   signOutUser,
   deleteAddressFromFirestore,
   subscribeToUpiIds,
-  fetchProductsFromSupabase
+  fetchProductsFromSupabase,
+  fetchUserProfileFromSupabase
 } from '../services/supabaseService';
 import { getFavoriteProductIds, toggleProductFavorite, clearAllFavorites } from '../services/favorites';
 import { INITIAL_PRODUCTS } from '../data/products';
@@ -93,7 +94,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         setAllCatalogProducts(prods);
       }
     });
-  }, []);
+
+    if (userProfile?.id) {
+      fetchUserProfileFromSupabase(userProfile.id).then((freshProf) => {
+        if (freshProf) {
+          onProfileUpdated({
+            ...userProfile,
+            ...freshProf,
+            id: userProfile.id,
+            name: freshProf.name || userProfile.name,
+            phone: freshProf.phone || userProfile.phone,
+            email: freshProf.email || userProfile.email,
+            dob: freshProf.dob || userProfile.dob,
+            photoURL: freshProf.photoURL || userProfile.photoURL,
+            walletBalance: freshProf.walletBalance ?? userProfile.walletBalance,
+            refundBalance: freshProf.refundBalance ?? userProfile.refundBalance,
+            cashbackBalance: freshProf.cashbackBalance ?? userProfile.cashbackBalance,
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [userProfile?.id]);
 
   useEffect(() => {
     const handleFavsChanged = () => {

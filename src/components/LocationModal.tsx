@@ -31,6 +31,7 @@ import {
   saveAddressToFirestore,
   deleteAddressFromFirestore,
   subscribeToAddresses,
+  cleanPhoneAutofill,
   ACTIVE_SAVED_ADDRESS_KEY
 } from '../services/supabaseService';
 import { showToast } from '../utils/toast';
@@ -1371,9 +1372,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   <input
                     id="address-receiver-phone-input"
                     type="tel"
+                    autoComplete="tel"
                     placeholder="10-digit mobile number"
                     value={receiverPhone}
-                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    onChange={(e) => setReceiverPhone(cleanPhoneAutofill(e.target.value))}
                     className="w-full pl-8 pr-3 py-2 border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-800 bg-white"
                   />
                 </div>

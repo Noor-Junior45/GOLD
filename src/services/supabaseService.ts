@@ -538,6 +538,28 @@ export async function getInitialAuthSession(): Promise<{ session: Session | null
   }
 }
 
+export function cleanPhoneAutofill(val: string): string {
+  if (!val) return '';
+  let cleaned = val.trim();
+
+  // Strip international prefixes if present
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3).trim();
+  } else if (cleaned.startsWith('0091')) {
+    cleaned = cleaned.slice(4).trim();
+  } else if (cleaned.startsWith('91') && cleaned.replace(/\D/g, '').length > 10) {
+    cleaned = cleaned.slice(2).trim();
+  }
+
+  // Strip spaces, dashes, parentheses
+  cleaned = cleaned.replace(/[\s\-()]/g, '');
+
+  // Strip leading zero(s) introduced by browser autofill (e.g. 01234567890 -> 1234567890)
+  cleaned = cleaned.replace(/^0+/, '');
+
+  return cleaned;
+}
+
 export function onAuthStateChange(
   callback: (event: AuthChangeEvent, session: Session | null, user: User | null) => void
 ) {
@@ -558,7 +580,8 @@ export function onAuthStateChange(
       // Extract profile details strictly for this authenticated user
       const userMeta = user.user_metadata || {};
       const localProf = scope ? getSavedUserProfile(scope) : null;
-      const phone = user.phone || userMeta.phone || localProf?.phone || '';
+      const rawPhone = user.phone || userMeta.phone || localProf?.phone || '';
+      const phone = cleanPhoneAutofill(rawPhone);
       const name = userMeta.full_name || userMeta.name || userMeta.custom_claims?.name || localProf?.name || (user.email ? user.email.split('@')[0] : 'Customer');
       const email = user.email || userMeta.email || localProf?.email || '';
       const photoURL = userMeta.avatar_url || userMeta.picture || localProf?.photoURL || undefined;
@@ -575,13 +598,8 @@ export function onAuthStateChange(
         scope || undefined
       );
 
-      // Also upsert profile row to Supabase `user_profiles` table
-      syncUserProfileToSupabase(user.id, {
-        phone,
-        full_name: name,
-        email,
-        avatar_url: photoURL
-      }).catch((e) => console.warn('Background profile sync:', e));
+      // Fetch the latest authoritative profile from Supabase rather than overwriting cloud with empty defaults
+      fetchUserProfileFromSupabase(user.id).catch((e) => console.debug('Background profile sync:', e));
     }
     callback(event, session, user);
   });
@@ -598,15 +616,27 @@ export async function syncUserProfileToSupabase(
   userId: string,
   profile: { phone?: string; full_name?: string; email?: string; avatar_url?: string; dob?: string }
 ): Promise<{ success: boolean; error?: string }> {
-  const payload = {
+  const cleanPhone = profile.phone !== undefined ? cleanPhoneAutofill(profile.phone) : undefined;
+  const payload: Record<string, any> = {
     user_id: userId,
-    phone: profile.phone || null,
-    full_name: profile.full_name || null,
-    email: profile.email || null,
-    avatar_url: profile.avatar_url || null,
-    dob: profile.dob || null,
     updated_at: new Date().toISOString()
   };
+
+  if (cleanPhone !== undefined) {
+    payload.phone = cleanPhone || null;
+  }
+  if (profile.full_name !== undefined) {
+    payload.full_name = profile.full_name || null;
+  }
+  if (profile.email !== undefined) {
+    payload.email = profile.email || null;
+  }
+  if (profile.avatar_url !== undefined) {
+    payload.avatar_url = profile.avatar_url || null;
+  }
+  if (profile.dob !== undefined) {
+    payload.dob = profile.dob || null;
+  }
 
   // 1. Also sync to server API backup
   try {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { KeyRound, Mail } from 'lucide-react';
 import { UserProfile } from '../../types';
-import { saveUserProfile } from '../../services/supabaseService';
+import { saveUserProfile, cleanPhoneAutofill } from '../../services/supabaseService';
 import { showToast } from '../../utils/toast';
 
 interface EditProfileModalProps {
@@ -219,8 +219,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 </div>
                 <input
                   type="tel"
+                  autoComplete="tel"
                   value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
+                  onChange={(e) => setEditPhone(cleanPhoneAutofill(e.target.value))}
                   placeholder="Enter 10-digit mobile number"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
                 />
