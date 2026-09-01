@@ -2539,6 +2539,9 @@ export function subscribeToAddresses(listener: AddressListener): () => void {
   const stored = getStoredAddresses();
   listener(stored);
 
+  // Immediately pull fresh addresses from server in background
+  fetchUserAddresses().catch(() => {});
+
   if (!addressesChannel) {
     addressesChannel = supabase
       .channel('addresses_realtime_feed')

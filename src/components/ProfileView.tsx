@@ -48,6 +48,7 @@ interface ProfileViewProps {
   savedAddresses: SavedAddress[];
   onBack: () => void;
   onOpenLocationModal: () => void;
+  onEditAddress?: (address: SavedAddress) => void;
   onSelectAddress?: (address: SavedAddress) => void;
   onReorder: (items: CartItem[]) => void;
   onOpenShop: () => void;
@@ -64,6 +65,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   savedAddresses,
   onBack,
   onOpenLocationModal,
+  onEditAddress,
   onSelectAddress,
   onReorder,
   onOpenShop,
@@ -243,6 +245,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         displayPhone={displayPhone}
         onBack={() => setSubPage('main')}
         onOpenLocationModal={onOpenLocationModal}
+        onEditAddress={onEditAddress}
         onSelectAddress={onSelectAddress}
         onDeleteAddress={deleteAddressFromFirestore}
       />

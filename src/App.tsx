@@ -9,7 +9,6 @@ import { DeviceLocationPromptModal } from './components/DeviceLocationPromptModa
 import { LoginPage } from './components/LoginPage';
 import { ProfileView } from './components/ProfileView';
 import { ProductDetailModal } from './components/ProductDetailModal';
-import { WiringServices } from './components/WiringServices';
 import { CartView } from './components/CartView';
 import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
@@ -21,6 +20,8 @@ import { supabase } from './lib/supabaseClient';
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
 import { HomePage } from './components/HomePage';
+import { TechniciansPage } from './components/technicians/TechniciansPage';
+import { TechnicianDetailPage } from './components/technicians/TechnicianDetailPage';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { InstallAppModal } from './components/InstallAppModal';
 import { SEOHead } from './components/SEOHead';
@@ -53,7 +54,8 @@ import {
   safeGetItem,
   safeSetItem,
   getUserScopeKeyFromUser,
-  setActiveUserScope
+  setActiveUserScope,
+  getStoredAddresses
 } from './services/supabaseService';
 import { useVersionCheck } from './hooks/useVersionCheck';
 import { Capacitor } from '@capacitor/core';
@@ -104,13 +106,13 @@ export default function App() {
     return null;
   });
 
-  const getActiveTabFromLocation = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' | 'electrical' | 'construction' => {
+  const getActiveTabFromLocation = (): 'home' | 'catalog' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' | 'electrical' | 'construction' | 'technicians' => {
     const path = location.pathname.toLowerCase();
     if (path.startsWith('/electrical')) return 'electrical';
     if (path.startsWith('/construction')) return 'construction';
+    if (path.startsWith('/technician')) return 'technicians';
     if (path === '/privacy' || path === '/privacy-policy') return 'privacy';
     if (path === '/terms' || path === '/terms-of-service') return 'terms';
-    if (path === '/services') return 'services';
     if (path === '/orders') return 'orders';
     if (path === '/profile') return 'profile';
     if (path === '/cart') return 'cart';
@@ -144,12 +146,13 @@ export default function App() {
 
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [addressToEdit, setAddressToEdit] = useState<SavedAddress | null>(null);
   const [isDeviceLocationPromptOpen, setIsDeviceLocationPromptOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(() => getStoredAddresses());
 
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => getSavedUserProfile());
@@ -320,7 +323,8 @@ export default function App() {
         setUserPhone(null);
         setUserName('');
         setOrders([]);
-        setSavedAddresses([]);
+        setSavedAddresses(getStoredAddresses());
+        setupUserSubscriptions();
       }
     }).finally(() => {
       setIsAuthLoading(false);
@@ -402,8 +406,9 @@ export default function App() {
         setUserPhone(null);
         setUserName('');
         setOrders([]);
-        setSavedAddresses([]);
+        setSavedAddresses(getStoredAddresses());
         setCartItems(getLocalCartItems());
+        setupUserSubscriptions();
       }
     });
 
@@ -413,34 +418,14 @@ export default function App() {
       setUserPhone(null);
       setUserName('');
       setOrders([]);
-      setSavedAddresses([]);
+      setSavedAddresses(getStoredAddresses());
       setCartItems(getLocalCartItems());
+      setupUserSubscriptions();
     };
     window.addEventListener('giriraj_user_logged_out', handleLogoutEvent);
 
     // Initial default subscriptions for guests
-    unsubscribeOrders = subscribeToOrders((allOrders) => {
-      setOrders(allOrders);
-    });
-
-    unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
-      setSavedAddresses(allAddrs);
-      if (allAddrs.length > 0) {
-        setActiveSavedAddress((curr) => {
-          if (curr && allAddrs.some((a) => a.id === curr.id)) {
-            return curr;
-          }
-          const defaultAddr = allAddrs[0];
-          try {
-            localStorage.setItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(defaultAddr));
-          } catch {}
-          if (defaultAddr.area) {
-            setCurrentArea(defaultAddr.area);
-          }
-          return defaultAddr;
-        });
-      }
-    });
+    setupUserSubscriptions();
 
     // Load live catalog directly from Supabase (Strict Database Mode)
     fetchProductsFromSupabase()
@@ -791,8 +776,10 @@ export default function App() {
       navigate('/electrical');
     } else if (tab === 'construction') {
       navigate('/construction');
-    } else if (tab === 'services') {
-      navigate('/services');
+    } else if (tab === 'technicians' || tab === 'technician') {
+      navigate('/technicians');
+    } else if (tab === 'services' || tab === 'wiring') {
+      navigate('/electrical');
     } else if (tab === 'orders') {
       navigate('/orders');
     } else if (tab === 'profile') {
@@ -1048,7 +1035,14 @@ export default function App() {
                 savedAddresses={savedAddresses}
                 allProducts={products}
                 onBack={() => navigate('/')}
-                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+                onOpenLocationModal={() => {
+                  setAddressToEdit(null);
+                  setIsLocationModalOpen(true);
+                }}
+                onEditAddress={(addr) => {
+                  setAddressToEdit(addr);
+                  setIsLocationModalOpen(true);
+                }}
                 onSelectAddress={(addr) => {
                   setActiveSavedAddress(addr);
                   setCurrentArea(addr.area);
@@ -1061,7 +1055,7 @@ export default function App() {
                   navigate('/cart');
                 }}
                 onOpenShop={() => navigate('/electrical')}
-                onOpenServices={() => navigate('/services')}
+                onOpenServices={() => navigate('/electrical')}
                 onProfileUpdated={(updated) => {
                   setUserProfile(updated);
                   setUserPhone(updated.phone || null);
@@ -1077,20 +1071,21 @@ export default function App() {
             }
           />
 
-          {/* SERVICES VIEW */}
+          {/* TECHNICIANS & FIELD SPECIALISTS ROUTES */}
           <Route
-            path="/services"
+            path="/technicians"
             element={
-              <WiringServices
-                currentArea={currentArea}
-                onBookService={(booking: WiringServiceBooking) => {
-                  console.log('Wiring service booked', booking);
-                }}
-                userPhone={userPhone}
-                onBack={() => navigate('/')}
+              <TechniciansPage
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
               />
             }
           />
+          <Route path="/technicians/:id" element={<TechnicianDetailPage />} />
+
+          {/* REDIRECT LEGACY WIRING ROUTES TO ELECTRICAL */}
+          <Route path="/services" element={<Navigate to="/electrical" replace />} />
+          <Route path="/wiring" element={<Navigate to="/electrical" replace />} />
 
           {/* ORDERS VIEW */}
           <Route
@@ -1165,10 +1160,11 @@ export default function App() {
         />
       )}
 
-      {/* Floating Liquid Glass Bottom Navigation (Visible on discovery & catalog views: Home, Electrical, Construction, and Wiring/Services) */}
+      {/* Floating Liquid Glass Bottom Navigation (Visible on discovery & catalog views: Home, Electrical, Construction, Technicians, and Wiring/Services) */}
       {(location.pathname === '/' ||
         location.pathname === '/electrical' ||
         location.pathname === '/construction' ||
+        location.pathname === '/technicians' ||
         location.pathname === '/services' ||
         location.pathname.startsWith('/services')) &&
         !selectedProductQuickView && (
@@ -1207,10 +1203,14 @@ export default function App() {
       />
       <LocationModal
         isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
+        onClose={() => {
+          setIsLocationModalOpen(false);
+          setAddressToEdit(null);
+        }}
         savedAddresses={savedAddresses}
         currentArea={currentArea}
         activeAddress={activeSavedAddress}
+        initialAddressToEdit={addressToEdit}
         userProfile={userProfile}
         userPhone={userPhone}
         onSelectArea={(area, addr) => {
@@ -1220,6 +1220,7 @@ export default function App() {
           } else {
             setActiveSavedAddress(null);
           }
+          setAddressToEdit(null);
         }}
       />
 

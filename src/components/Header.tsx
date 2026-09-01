@@ -79,15 +79,19 @@ export const Header: React.FC<HeaderProps> = ({
   const location = useLocation();
   const locationInfo = getHeaderDisplayLocation(currentArea, activeAddress);
 
-  // Show All Filters button strictly on Electrical, Construction, and Wiring/Services pages (Hidden on Home and others)
+  // Show All Filters button strictly on Electrical, Construction, and Technicians pages (Hidden on Home and others)
   const currentPath = location.pathname.toLowerCase();
+  const isTechniciansPage =
+    activeTab === 'technicians' ||
+    activeTab === 'technician' ||
+    currentPath.startsWith('/technicians');
+
   const showFilterBtn =
     activeTab === 'electrical' ||
     activeTab === 'construction' ||
-    activeTab === 'services' ||
+    isTechniciansPage ||
     currentPath.startsWith('/electrical') ||
-    currentPath.startsWith('/construction') ||
-    currentPath.startsWith('/services');
+    currentPath.startsWith('/construction');
 
   // Instant Enter key handler for search input - navigates directly without delay
   const handleSearchSubmit = (e?: React.FormEvent) => {
@@ -95,6 +99,13 @@ export const Header: React.FC<HeaderProps> = ({
       e.preventDefault();
     }
     const q = (searchQuery || '').trim();
+
+    if (isTechniciansPage) {
+      hapticSelection();
+      navigate(`/technicians${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+      return;
+    }
+
     if (!q) return;
 
     // Detect target store category (electrical or construction) immediately
@@ -222,9 +233,9 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="Shopping Cart"
             >
               <div className="relative">
-                <ShoppingBag className="w-5 h-5 sm:w-5.5 sm:h-5.5" strokeWidth={2} />
+                <ShoppingBag className="w-6 h-6 sm:w-6.5 sm:h-6.5" strokeWidth={2.2} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                  <span className="absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-black min-w-4.5 h-4.5 px-1 rounded-full flex items-center justify-center border-2 border-white animate-pulse shadow-xs">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
@@ -284,7 +295,11 @@ export const Header: React.FC<HeaderProps> = ({
                 value={searchQuery || ''}
                 onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search products, electrical cables, switches, brands..."
+                placeholder={
+                  isTechniciansPage
+                    ? 'Search technician, skill (e.g. Solar, Switchgear)...'
+                    : 'Search products, electrical cables, switches, brands...'
+                }
                 className="w-full bg-transparent text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm pl-9 sm:pl-10 pr-8 sm:pr-9 py-1.5 sm:py-2 rounded-full focus:outline-none"
               />
 
@@ -302,8 +317,40 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </form>
 
-          {/* Right Side: All Filters Button & Sort / Relevance Button (Only visible on Electrical, Construction, and Wiring pages; Hidden on Home) */}
-          {showFilterBtn && (
+          {/* Right Side: All Filters Button & Sort / Relevance Button */}
+          {isTechniciansPage ? (
+            <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+              {/* Technician Specialist Filters Button (Sector, License, Experience, Emergency, Equipment - Side Menu on Laptop / Full Page on Mobile) */}
+              <button
+                id="top-navbar-technician-filters-btn"
+                type="button"
+                onClick={() => {
+                  hapticSelection();
+                  window.dispatchEvent(new CustomEvent('open-technician-filters'));
+                }}
+                className="p-1.5 sm:p-2 flex items-center justify-center text-slate-700 hover:text-indigo-600 border-0 bg-transparent transition-colors active:scale-95 cursor-pointer relative"
+                title="All Specialist Filters (Sector, License, Experience, Tools, Area)"
+                aria-label="All Specialist Filters"
+              >
+                <SlidersHorizontal className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-indigo-600 hover:text-indigo-700 shrink-0" strokeWidth={2.2} />
+              </button>
+
+              {/* Technician Price & Quick Sort Button (Short & Small Dropdown Box) */}
+              <button
+                id="top-navbar-technician-sort-btn"
+                type="button"
+                onClick={() => {
+                  hapticSelection();
+                  window.dispatchEvent(new CustomEvent('open-technician-sort'));
+                }}
+                className="p-1.5 sm:p-2 flex items-center justify-center text-slate-700 hover:text-blue-600 border-0 bg-transparent transition-colors active:scale-95 cursor-pointer"
+                title="Price & Quick Sort (Low to High, High to Low, Top Rated, Nearest)"
+                aria-label="Price and Quick Sort"
+              >
+                <ArrowUpDown className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-blue-600 hover:text-blue-700 shrink-0" strokeWidth={2.2} />
+              </button>
+            </div>
+          ) : showFilterBtn ? (
             <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
               {/* All Filters Button (Borderless, icon only, no circular/oval background) */}
               <button
@@ -333,7 +380,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <ArrowUpDown className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-blue-600 hover:text-blue-700 shrink-0" strokeWidth={2.2} />
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

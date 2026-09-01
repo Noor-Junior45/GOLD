@@ -742,6 +742,32 @@ function writeSavedAddressesFile(addresses: any[]): void {
   }
 }
 
+// Persistent Server Store for Technician Reviews
+const TECHNICIAN_REVIEWS_FILE = path.join(DATA_DIR, "technician_reviews.json");
+
+function loadTechnicianReviewsFile(): any[] {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(TECHNICIAN_REVIEWS_FILE)) {
+      const raw = fs.readFileSync(TECHNICIAN_REVIEWS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("[Server Read Technician Reviews Notice]:", err);
+  }
+  return [];
+}
+
+function writeTechnicianReviewsFile(reviews: any[]): void {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(TECHNICIAN_REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[Server Write Technician Reviews Notice]:", err);
+  }
+}
+
 // ============================================================================
 // 1. SUPABASE SERVER CLIENT (LAZY INITIALIZATION)
 // ============================================================================
@@ -1983,14 +2009,14 @@ async function startServer() {
         let matches = false;
         const itemUserId = item.userId || item.user_id;
         const itemScope = item.userScope || item.scope;
-        const itemPhone = (item.receiverPhone || item.phone || "").replace(/\D/g, "").slice(-10);
-        const itemEmail = (item.receiverEmail || item.email || "").trim().toLowerCase();
+        const itemPhone = (item.receiverPhone || item.receiver_phone || item.phone || "").replace(/\D/g, "").slice(-10);
+        const itemEmail = (item.receiverEmail || item.receiver_email || item.email || "").trim().toLowerCase();
 
         if (cleanUserId && itemUserId && String(itemUserId) === cleanUserId) {
           matches = true;
         } else if (cleanScope && itemScope && String(itemScope) === cleanScope) {
           matches = true;
-        } else if (cleanPhone && itemPhone && itemPhone === cleanPhone) {
+        } else if (cleanPhone && itemPhone && (itemPhone === cleanPhone || cleanPhone.includes(itemPhone) || itemPhone.includes(cleanPhone))) {
           matches = true;
         } else if (cleanEmail && itemEmail && itemEmail === cleanEmail) {
           matches = true;
@@ -2001,6 +2027,15 @@ async function startServer() {
 
         if (matches && !collectedMap.has(item.id)) {
           collectedMap.set(item.id, item);
+        }
+      }
+
+      // If specific filter yielded 0 results, also supply available server stored addresses
+      if (collectedMap.size === 0 && fileAddresses.length > 0) {
+        for (const item of fileAddresses) {
+          if (item && item.id && !collectedMap.has(item.id)) {
+            collectedMap.set(item.id, item);
+          }
         }
       }
 
@@ -2224,6 +2259,130 @@ async function startServer() {
       return res.status(200).json({ success: true, message: "Service booking recorded" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message || "Failed to record booking" });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // TECHNICIAN REVIEWS & SERVER STORAGE API
+  // --------------------------------------------------------------------------
+  app.get("/api/technicians/:id/reviews", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const techId = req.params.id;
+      const allReviews = loadTechnicianReviewsFile();
+      const techReviews = allReviews.filter((r: any) => r.technicianId === techId);
+      return res.json({
+        success: true,
+        reviews: techReviews
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/technicians/:id/reviews", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const techId = req.params.id;
+      const { customerName, area, rating, comment, serviceType } = req.body || {};
+
+      if (!customerName || !customerName.trim()) {
+        return res.status(400).json({ success: false, message: "Customer name is required" });
+      }
+      if (!rating || Number(rating) < 1 || Number(rating) > 5) {
+        return res.status(400).json({ success: false, message: "Valid rating between 1 and 5 is required" });
+      }
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({ success: false, message: "Review comment is required" });
+      }
+
+      const allReviews = loadTechnicianReviewsFile();
+      const newReview = {
+        id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        technicianId: techId,
+        customerName: customerName.trim(),
+        area: (area || "Kolkata").trim(),
+        rating: Math.min(5, Math.max(1, Number(rating))),
+        date: new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }),
+        comment: comment.trim(),
+        verifiedJob: true,
+        serviceType: (serviceType || "Service Inspection").trim(),
+        createdAt: new Date().toISOString()
+      };
+
+      allReviews.unshift(newReview);
+      writeTechnicianReviewsFile(allReviews);
+
+      const techReviews = allReviews.filter((r: any) => r.technicianId === techId);
+      return res.status(201).json({
+        success: true,
+        message: "Review successfully saved to server",
+        review: newReview,
+        reviews: techReviews
+      });
+    } catch (err: any) {
+      console.error("Error saving technician review:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to save review" });
+    }
+  });
+
+  // Gemini AI endpoint for generating short technician descriptions
+  app.post("/api/technicians/generate-description", async (req, res) => {
+    try {
+      const { name, title, primarySector, subSectors, experienceYears, skills, about } = req.body || {};
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      const fallbackDesc = `${experienceYears || 5}+ years experienced ${title || "Electrical Specialist"} specialized in ${
+        (subSectors && subSectors[0]) || primarySector || "electrical installations"
+      } with verified field expertise across Kolkata.`;
+
+      if (!apiKey) {
+        return res.json({
+          success: true,
+          description: fallbackDesc,
+          aiPowered: false
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: { headers: { "User-Agent": "aistudio-build" } }
+      });
+
+      const prompt = `Write a crisp, single-sentence professional summary (under 25 words) for an electrical technician profile with the following details:
+- Name: ${name}
+- Profession / Title: ${title}
+- Primary Sector: ${primarySector}
+- Sub-specialties: ${Array.isArray(subSectors) ? subSectors.join(", ") : subSectors}
+- Experience: ${experienceYears} years
+- Key Skills: ${Array.isArray(skills) ? skills.map((s: any) => typeof s === 'string' ? s : s.name).join(", ") : skills}
+- Background: ${about}
+
+Tone: direct, confident, objective. Output ONLY the single sentence. No quotation marks, no markdown, no prefixes.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+      });
+
+      const generated = response.text ? response.text.trim().replace(/^["']|["']$/g, "") : fallbackDesc;
+
+      return res.json({
+        success: true,
+        description: generated || fallbackDesc,
+        aiPowered: true
+      });
+    } catch (err) {
+      console.warn("AI description generation error:", err);
+      return res.json({
+        success: true,
+        description: `${req.body?.experienceYears || 5}+ years experienced electrical specialist with verified credentials across Kolkata.`,
+        aiPowered: false
+      });
     }
   });
 

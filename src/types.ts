@@ -283,4 +283,10 @@ export interface ReceivedEmail {
 
 export type { Offer, OfferProduct, ProductOfferEvaluation } from './services/offerService';
 export type { ProductReview } from './types/electrical';
+export type {
+  Technician,
+  TechnicianReview,
+  TechnicianCertification,
+  TechnicianSkill
+} from './types/technician';
 

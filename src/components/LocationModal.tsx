@@ -11,6 +11,7 @@ import {
   Briefcase,
   Building2,
   Trash2,
+  Pencil,
   ChevronRight,
   Phone,
   User as UserIcon,
@@ -18,7 +19,9 @@ import {
   ZoomOut,
   Loader2,
   Plus,
-  Map as MapIcon
+  Map as MapIcon,
+  RotateCw,
+  AlertCircle
 } from 'lucide-react';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
@@ -45,6 +48,7 @@ interface LocationModalProps {
   savedAddresses?: SavedAddress[];
   currentArea: KolkataArea;
   activeAddress?: SavedAddress | null;
+  initialAddressToEdit?: SavedAddress | null;
   userProfile?: UserProfile | null;
   userPhone?: string | null;
   onSelectArea: (area: KolkataArea, address?: SavedAddress) => void;
@@ -69,6 +73,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   savedAddresses: externalSavedAddresses,
   currentArea,
   activeAddress,
+  initialAddressToEdit,
   userProfile,
   userPhone,
   onSelectArea
@@ -77,6 +82,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [step, setStep] = useState<'search_home' | 'map_pin' | 'details_form'>('search_home');
   // Source that opened the map: 'add_saved_address' | 'detect_location'
   const [mapEntrySource, setMapEntrySource] = useState<'add_saved_address' | 'detect_location'>('detect_location');
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   // Search & Map States
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,6 +91,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [mapSearchResults, setMapSearchResults] = useState<MapSearchResult[]>([]);
   const [isSearchingMap, setIsSearchingMap] = useState(false);
   const [activeProvider, setActiveProvider] = useState<'mappls' | 'google' | 'osm'>('mappls');
+  const [isRetryingMap, setIsRetryingMap] = useState(false);
+  const [retryStatusMessage, setRetryStatusMessage] = useState<string | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
 
   // Map Coordinates & Pin Location
@@ -156,44 +164,86 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     return () => unsub();
   }, []);
 
-  // Reset state whenever modal opens without triggering flickering re-fetches
-  useEffect(() => {
-    if (isOpen) {
-      setStep('search_home');
-      setSearchQuery('');
-      setFormError(null);
-      setActiveProvider(mapManager.getActiveProviderName());
+  const handleStartEditAddress = useCallback((addr: SavedAddress, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingAddressId(addr.id);
+    setHouseName(addr.houseName || '');
+    setHouseFlat(addr.houseFlat || '');
+    setBuildingRoad(addr.buildingRoad || addr.area?.name || '');
+    setLandmark(addr.landmark || '');
+    setAddressTag(addr.tag || 'home');
+    setCustomTagLabel(addr.tagLabel || '');
+    setReceiverName(addr.receiverName || userProfile?.name || '');
+    setReceiverPhone(addr.receiverPhone || userProfile?.phone || userPhone || '');
+    setDetectedStreet(addr.buildingRoad || addr.area?.name || '');
+    setMatchedArea(addr.area || currentArea);
+    setPinCoordinates({
+      lat: addr.lat || addr.area?.lat || currentArea.lat || 22.5735,
+      lng: addr.lng || addr.area?.lng || currentArea.lng || 88.4331
+    });
+    setFormError(null);
+    setStep('details_form');
+  }, [currentArea, userProfile, userPhone]);
 
-      // Auto-fill Receiver Name
-      if (activeAddress?.receiverName) {
-        setReceiverName(activeAddress.receiverName);
-      } else if (userProfile?.name && userProfile.name.toLowerCase() !== 'customer') {
-        setReceiverName(userProfile.name);
-      } else {
-        const emailToUse = userProfile?.email || localStorage.getItem('giriraj_user_email') || '';
-        const derived = deriveNameFromEmail(emailToUse);
-        if (derived) {
-          setReceiverName(derived);
+  const prevIsOpenRef = useRef(false);
+  const prevEditAddressRef = useRef<string | null | undefined>(undefined);
+
+  // Reset state ONLY when modal first opens or when explicitly editing a new address
+  useEffect(() => {
+    const isFirstOpen = isOpen && !prevIsOpenRef.current;
+    const editId = initialAddressToEdit?.id || null;
+    const isEditTargetChanged = editId !== prevEditAddressRef.current;
+
+    prevIsOpenRef.current = isOpen;
+    prevEditAddressRef.current = editId;
+
+    if (isOpen) {
+      if (isFirstOpen) {
+        fetchUserAddresses().then((list) => {
+          if (Array.isArray(list)) setInternalSavedAddresses(list);
+        }).catch(() => {});
+      }
+
+      if (initialAddressToEdit && (isFirstOpen || isEditTargetChanged)) {
+        handleStartEditAddress(initialAddressToEdit);
+      } else if (isFirstOpen) {
+        setEditingAddressId(null);
+        setStep('search_home');
+        setSearchQuery('');
+        setFormError(null);
+        setActiveProvider(mapManager.getActiveProviderName());
+
+        // Auto-fill Receiver Name
+        if (activeAddress?.receiverName) {
+          setReceiverName(activeAddress.receiverName);
+        } else if (userProfile?.name && userProfile.name.toLowerCase() !== 'customer') {
+          setReceiverName(userProfile.name);
         } else {
-          const stored = localStorage.getItem('giriraj_user_name');
-          if (stored && stored.toLowerCase() !== 'customer') {
-            setReceiverName(stored);
+          const emailToUse = userProfile?.email || localStorage.getItem('giriraj_user_email') || '';
+          const derived = deriveNameFromEmail(emailToUse);
+          if (derived) {
+            setReceiverName(derived);
+          } else {
+            const stored = localStorage.getItem('giriraj_user_name');
+            if (stored && stored.toLowerCase() !== 'customer') {
+              setReceiverName(stored);
+            }
           }
         }
-      }
 
-      // Auto-fill Receiver Phone
-      if (activeAddress?.receiverPhone) {
-        setReceiverPhone(activeAddress.receiverPhone);
-      } else if (userProfile?.phone) {
-        setReceiverPhone(userProfile.phone);
-      } else if (userPhone) {
-        setReceiverPhone(userPhone);
-      } else {
-        setReceiverPhone('');
+        // Auto-fill Receiver Phone
+        if (activeAddress?.receiverPhone) {
+          setReceiverPhone(activeAddress.receiverPhone);
+        } else if (userProfile?.phone) {
+          setReceiverPhone(userProfile.phone);
+        } else if (userPhone) {
+          setReceiverPhone(userPhone);
+        } else {
+          setReceiverPhone('');
+        }
       }
     }
-  }, [isOpen, activeAddress, userProfile, userPhone]);
+  }, [isOpen, activeAddress, initialAddressToEdit, userProfile, userPhone, handleStartEditAddress]);
 
   // Reverse geocode and resolve closest Kolkata area
   const resolveCoordinatesToAddress = useCallback(async (lat: number, lng: number) => {
@@ -316,6 +366,62 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       mapInstanceRef.current.flyTo({ lat, lng }, zoom);
     }
   };
+
+  // Retry and re-initialize map if Mappls script or initialization failed
+  const handleRetryMap = useCallback(async () => {
+    if (isRetryingMap || !mapContainerRef.current) return;
+    setIsRetryingMap(true);
+    setRetryStatusMessage('Retrying map initialization...');
+
+    const lat = pinCoordinates.lat || currentArea.lat || 22.5735;
+    const lng = pinCoordinates.lng || currentArea.lng || 88.4331;
+
+    try {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.destroy();
+        } catch (e) {
+          console.warn('[LocationModal] Error destroying previous map instance:', e);
+        }
+        mapInstanceRef.current = null;
+      }
+
+      const { instance, provider } = await mapManager.retryMap(mapContainerRef.current, {
+        center: { lat, lng },
+        zoom: 18,
+        minZoom: 12,
+        maxZoom: 19,
+        onMoveStart: () => setIsMapDragging(true),
+        onMove: (coords) => setPinCoordinates(coords),
+        onMoveEnd: (coords) => {
+          setIsMapDragging(false);
+          setPinCoordinates(coords);
+          resolveCoordinatesToAddress(coords.lat, coords.lng);
+        }
+      });
+
+      mapInstanceRef.current = instance;
+      setActiveProvider(provider);
+      instance.invalidateSize();
+      setTimeout(() => instance.invalidateSize(), 200);
+      resolveCoordinatesToAddress(lat, lng);
+
+      if (provider === 'mappls') {
+        showToast('Mappls Map connected successfully', 'success');
+        setRetryStatusMessage(null);
+      } else {
+        setRetryStatusMessage(`Loaded backup map (${provider.toUpperCase()})`);
+        setTimeout(() => setRetryStatusMessage(null), 4000);
+      }
+    } catch (err: any) {
+      console.warn('[LocationModal] Map retry re-initialization error:', err);
+      showToast('Map re-initialization error. Running on backup map.', 'info');
+      setRetryStatusMessage('Running on backup map');
+      setTimeout(() => setRetryStatusMessage(null), 4000);
+    } finally {
+      setIsRetryingMap(false);
+    }
+  }, [isRetryingMap, pinCoordinates, currentArea, resolveCoordinatesToAddress]);
 
   // Instantly apply current location / area
   const handleUseCurrentLocationDirectly = (areaToUse?: KolkataArea, streetToUse?: string) => {
@@ -573,10 +679,11 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       return;
     }
 
+    const targetId = editingAddressId || `addr-${Date.now()}`;
     const formatted = `${houseFlat.trim()}, ${houseName.trim()}, ${buildingRoad.trim()}, ${matchedArea.name} (PIN ${matchedArea.pincode})`;
 
     const newAddress: SavedAddress = {
-      id: `addr-${Date.now()}`,
+      id: targetId,
       tag: addressTag,
       tagLabel: addressTag === 'other' && customTagLabel.trim() ? customTagLabel.trim() : undefined,
       houseName: houseName.trim(),
@@ -589,13 +696,15 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       lng: pinCoordinates.lng,
       receiverName: receiverName.trim() || undefined,
       receiverPhone: receiverPhone.trim() || undefined,
-      createdAt: new Date().toISOString()
+      createdAt: editingAddressId
+        ? (savedAddresses.find((a) => a.id === editingAddressId)?.createdAt || new Date().toISOString())
+        : new Date().toISOString()
     };
 
     try {
       const res = await saveAddressToFirestore(newAddress);
       if (res.success) {
-        showToast('Address saved and synced successfully!', 'success');
+        showToast(editingAddressId ? 'Address updated successfully!' : 'Address saved and synced successfully!', 'success');
       } else {
         showToast('Address saved locally. Cloud sync queued.', 'info');
       }
@@ -612,6 +721,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
       console.error(err);
     }
 
+    setEditingAddressId(null);
     onSelectArea(matchedArea, newAddress);
     onClose();
   };
@@ -762,7 +872,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 {/* Detect Location Button */}
                 <div 
                   id="detect-my-current-location-btn"
-                  onClick={() => !gpsLoading && handleDetectCurrentLocation(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!gpsLoading) handleDetectCurrentLocation(false);
+                  }}
                   className={`relative overflow-hidden bg-white border rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between ${
                     gpsLoading
                       ? 'border-blue-500 bg-blue-50/30 ring-1 ring-blue-500 pointer-events-none'
@@ -771,7 +884,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   title="Directly fetch current location"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-200 shrink-0 ${
+                    <div className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-200 shrink-0 ${
                       gpsLoading
                         ? 'bg-blue-600 text-white'
                         : 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
@@ -779,18 +892,12 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                       {gpsLoading ? (
                         <Loader2 className="w-4.5 h-4.5 animate-spin relative z-10" />
                       ) : (
-                        <>
-                          <span className="absolute inset-0 rounded-lg bg-blue-400/30 animate-ping opacity-60 group-hover:opacity-100" />
-                          <LocateFixed className="w-4.5 h-4.5 stroke-[2.2] relative z-10 group-hover:scale-110 transition-transform duration-200" />
-                        </>
+                        <LocateFixed className="w-4.5 h-4.5 stroke-[2.2] relative z-10 group-hover:scale-110 transition-transform duration-200" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center min-w-0">
                       <span className="text-sm font-bold text-slate-900 group-hover:text-black tracking-tight truncate">
                         {gpsLoading ? 'Fetching Current Location...' : 'Detect Location'}
-                      </span>
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 uppercase tracking-wider group-hover:bg-blue-100 transition-colors shrink-0">
-                        GPS
                       </span>
                     </div>
                   </div>
@@ -805,19 +912,39 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
 
                 {/* Add Address Action Button */}
-                <div
+                <button
+                  type="button"
                   id="add-saved-address-btn"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditingAddressId(null);
+                    setHouseName('');
+                    setHouseFlat('');
+                    setLandmark('');
+                    setReceiverName(
+                      userProfile?.name && userProfile.name.toLowerCase() !== 'customer'
+                        ? userProfile.name
+                        : activeAddress?.receiverName || ''
+                    );
+                    setReceiverPhone(
+                      userProfile?.phone || userPhone || activeAddress?.receiverPhone || ''
+                    );
+                    setAddressTag('home');
+                    setCustomTagLabel('');
+                    setFormError(null);
                     setMapEntrySource('add_saved_address');
+                    
+                    const initLat = currentArea.lat || 22.5735;
+                    const initLng = currentArea.lng || 88.4331;
+                    setPinCoordinates({ lat: initLat, lng: initLng });
                     setStep('map_pin');
-                    // Ensure coordinates are initialized from current area or default Kolkata center
-                    const initLat = pinCoordinates.lat || currentArea.lat || 22.5735;
-                    const initLng = pinCoordinates.lng || currentArea.lng || 88.4331;
+                    
                     setTimeout(() => {
                       flyToCoords(initLat, initLng, 18);
-                    }, 150);
+                    }, 200);
                   }}
-                  className="mt-2.5 bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between"
+                  className="w-full mt-2.5 bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between text-left"
                   title="Add new address"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -830,7 +957,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   </div>
 
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-transform duration-200 shrink-0" />
-                </div>
+                </button>
 
                 {/* Saved Addresses Section */}
                 <div className="mt-6 space-y-3">
@@ -880,6 +1007,14 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                             <div className="flex items-center gap-1 shrink-0 self-center">
                               <button
                                 type="button"
+                                onClick={(e) => handleStartEditAddress(addr, e)}
+                                className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                title="Edit address"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
                                 onClick={(e) => handleDeleteAddress(addr.id, e)}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 title="Delete address"
@@ -911,7 +1046,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
         {step === 'map_pin' && (
           <div className="flex-1 flex flex-col relative overflow-hidden bg-white">
             
-            {/* Top Bar with Back Button & Title */}
+            {/* Top Bar with Back Button, Title & Action Controls */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <button
@@ -926,9 +1061,6 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
                     Set Delivery Location
                   </h3>
-                  <p className="text-xs text-slate-500">
-                    Drag map to position pin at your doorstep
-                  </p>
                 </div>
               </div>
 
@@ -995,12 +1127,25 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                     className={`w-3.5 h-1.5 rounded-full bg-black/40 blur-[1px] transition-all duration-200 ${
                       isMapDragging ? 'scale-50 opacity-20' : 'scale-100 opacity-80'
                     }`}
-                  />
+                  >
+                    <span className="sr-only">Pin shadow</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Floating Controls: Locate Me & Zoom */}
+              {/* Floating Controls: Locate Me, Retry & Zoom */}
               <div className="absolute bottom-4 right-3.5 z-[1000] flex flex-col gap-2">
+                <button
+                  type="button"
+                  id="floating-retry-map-btn"
+                  onClick={handleRetryMap}
+                  disabled={isRetryingMap}
+                  className="w-10 h-10 bg-white border border-slate-200 text-slate-800 shadow-lg flex items-center justify-center hover:bg-slate-50 cursor-pointer active:scale-95 transition-all disabled:opacity-60"
+                  title="Retry / Re-initialize Map"
+                >
+                  <RotateCw className={`w-4 h-4 text-slate-900 ${isRetryingMap ? 'animate-spin' : ''}`} />
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleDetectCurrentLocation(true)}
@@ -1050,28 +1195,15 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
+              <div className="pt-1">
                 <button
                   type="button"
                   id="confirm-pin-proceed-details-btn"
                   onClick={handleProceedToDetails}
-                  className="w-full py-3 px-4 bg-slate-900 hover:bg-black text-white font-bold text-sm tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm active:scale-[0.99]"
+                  className="w-full py-3 px-4 bg-slate-900 hover:bg-black text-white font-bold text-sm tracking-tight flex items-center justify-center cursor-pointer transition-all shadow-sm active:scale-[0.99]"
                 >
-                  <span>CONFIRM LOCATION &amp; ENTER DETAILS</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <span>Confirm</span>
                 </button>
-
-                {mapEntrySource !== 'add_saved_address' && (
-                  <button
-                    type="button"
-                    id="quick-confirm-location-btn"
-                    onClick={() => handleUseCurrentLocationDirectly()}
-                    className="w-full py-2.5 px-3 border border-slate-300 hover:border-slate-400 bg-white text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:bg-slate-50"
-                  >
-                    <Check className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Quick Deliver to Selected Area</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1094,7 +1226,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h3 className="text-base font-bold text-slate-900">
-                  Enter Complete Address
+                  {editingAddressId ? 'Edit Delivery Address' : 'Enter Complete Address'}
                 </h3>
               </div>
 
@@ -1288,7 +1420,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 type="submit"
                 className="w-full py-3.5 px-4 bg-slate-900 hover:bg-black text-white font-bold text-sm tracking-tight transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               >
-                <span>SAVE &amp; DELIVER HERE</span>
+                <span>{editingAddressId ? 'UPDATE & DELIVER HERE' : 'SAVE & DELIVER HERE'}</span>
                 <ChevronRight className="w-4 h-4 text-white" />
               </button>
             </div>

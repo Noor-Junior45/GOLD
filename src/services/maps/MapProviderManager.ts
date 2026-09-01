@@ -59,6 +59,25 @@ export class MapProviderManager {
     };
   }
 
+  public isMapplsKeyConfigured(): boolean {
+    return this.mapplsProvider.hasKey();
+  }
+
+  public isMapplsFailed(): boolean {
+    return this.isMapplsKeyConfigured() && !this.mapplsProvider.isAvailable();
+  }
+
+  /**
+   * Resets provider script cache and attempts full map re-initialization.
+   */
+  public async retryMap(container: HTMLElement, options: MapInitOptions): Promise<{
+    instance: IMapInstance;
+    provider: 'mappls' | 'google' | 'osm';
+  }> {
+    this.mapplsProvider.resetState();
+    return this.renderMap(container, options);
+  }
+
   /**
    * Initializes the map in the given DOM container.
    * Tries Mappls first, cascades to Google Maps, then to OSM.

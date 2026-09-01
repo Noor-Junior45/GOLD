@@ -9,8 +9,26 @@ declare global {
 }
 
 let mapplsScriptPromise: Promise<boolean> | null = null;
+let mapplsLoadFailed = false;
+
+export function resetMapplsScriptState(): void {
+  mapplsLoadFailed = false;
+  mapplsScriptPromise = null;
+  try {
+    const existing = document.getElementById('mappls-web-sdk-script');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+  } catch (e) {
+    console.warn('[MapplsProvider] Error removing script during reset:', e);
+  }
+}
 
 function loadMapplsScript(mapKey: string): Promise<boolean> {
+  if (mapplsLoadFailed) {
+    return Promise.resolve(false);
+  }
+
   if (window.mappls && window.mappls.Map) {
     return Promise.resolve(true);
   }
@@ -27,8 +45,15 @@ function loadMapplsScript(mapKey: string): Promise<boolean> {
           resolve(true);
           return;
         }
-        existingScript.addEventListener('load', () => resolve(Boolean(window.mappls && window.mappls.Map)));
-        existingScript.addEventListener('error', () => resolve(false));
+        existingScript.addEventListener('load', () => {
+          const ok = Boolean(window.mappls && window.mappls.Map);
+          if (!ok) mapplsLoadFailed = true;
+          resolve(ok);
+        });
+        existingScript.addEventListener('error', () => {
+          mapplsLoadFailed = true;
+          resolve(false);
+        });
         return;
       }
 
@@ -39,25 +64,31 @@ function loadMapplsScript(mapKey: string): Promise<boolean> {
       script.defer = true;
 
       const timeout = setTimeout(() => {
-        console.warn('[MapplsProvider] Script loading timed out after 8 seconds');
+        console.warn('[MapplsProvider] Script loading timed out after 2.5 seconds');
+        mapplsLoadFailed = true;
         resolve(false);
-      }, 8000);
+      }, 2500);
 
       script.onload = () => {
         clearTimeout(timeout);
         const isReady = Boolean(window.mappls && window.mappls.Map);
+        if (!isReady) {
+          mapplsLoadFailed = true;
+        }
         resolve(isReady);
       };
 
       script.onerror = (e) => {
         clearTimeout(timeout);
         console.warn('[MapplsProvider] Failed to load Mappls Web Maps SDK script:', e);
+        mapplsLoadFailed = true;
         resolve(false);
       };
 
       document.head.appendChild(script);
     } catch (err) {
       console.warn('[MapplsProvider] Error injecting script:', err);
+      mapplsLoadFailed = true;
       resolve(false);
     }
   });
@@ -79,7 +110,16 @@ export class MapplsProvider implements IMapProvider {
     return key;
   }
 
+  hasKey(): boolean {
+    return Boolean(this.getMapKey());
+  }
+
+  resetState(): void {
+    resetMapplsScriptState();
+  }
+
   isAvailable(): boolean {
+    if (mapplsLoadFailed) return false;
     return Boolean(this.getMapKey());
   }
 

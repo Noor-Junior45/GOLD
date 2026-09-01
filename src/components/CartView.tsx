@@ -584,17 +584,14 @@ export const CartView: React.FC<CartViewProps> = ({
   // ==========================================================================
   if (items.length === 0) {
     return (
-      <div className="min-h-[80vh] bg-[#f8fafc] flex flex-col items-center justify-center px-4 py-12 font-sans">
-        <div className="max-w-md w-full text-center bg-white p-8 sm:p-10 rounded-3xl border border-slate-200/80 shadow-sm">
-          <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-amber-100 shadow-inner">
+      <div className="min-h-[75vh] flex flex-col items-center justify-center px-4 py-12 font-sans">
+        <div className="max-w-md w-full text-center p-4 sm:p-6">
+          <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-5 border border-amber-100 shadow-inner">
             <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Your cart is empty</h2>
-          <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-            Looks like you haven't added any electrical supplies, wiring cables, or construction materials to your cart yet.
-          </p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-6">Your cart is empty</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-sm mx-auto">
             <button
               onClick={onContinueShopping}
               className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black py-3 px-4 rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-amber-500/30 whitespace-nowrap"
@@ -604,7 +601,7 @@ export const CartView: React.FC<CartViewProps> = ({
             </button>
             <button
               onClick={() => navigate('/construction')}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold py-3 px-4 rounded-xl shadow-2xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-slate-200 whitespace-nowrap"
+              className="w-full bg-white hover:bg-slate-100 text-slate-900 font-bold py-3 px-4 rounded-xl shadow-2xs transition active:scale-98 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer border border-slate-200 whitespace-nowrap"
             >
               <Building2 className="w-4 h-4 text-slate-700 shrink-0" />
               <span>Construction Items</span>

@@ -1,6 +1,34 @@
 <!doctype html>
 <html lang="en" prefix="og: https://ogp.me/ns#">
   <head>
+    <script>
+      // Gracefully silence benign [vite] websocket connection errors in AI Studio iframe/sandboxed environments
+      window.addEventListener('unhandledrejection', function(event) {
+        if (
+          event &&
+          event.reason &&
+          (
+            String(event.reason).includes('WebSocket closed') ||
+            String(event.reason?.message || '').includes('WebSocket closed') ||
+            String(event.reason).includes('failed to connect to websocket') ||
+            String(event.reason?.message || '').includes('failed to connect to websocket')
+          )
+        ) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener('error', function(event) {
+        if (
+          event &&
+          (
+            String(event.message || '').includes('WebSocket closed') ||
+            String(event.message || '').includes('failed to connect to websocket')
+          )
+        ) {
+          event.preventDefault();
+        }
+      });
+    </script>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-7J0DXZDRWL"></script>
     <script>
