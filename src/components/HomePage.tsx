@@ -29,6 +29,7 @@ import { OFFICIAL_BRANDS } from './BrandLogos';
 import { ProductCardImage } from './ProductCardImage';
 import { MaterialCostCalculator } from './MaterialCostCalculator';
 import { hapticLight, hapticSelection } from '../utils/haptics';
+import { PullToRefresh } from './PullToRefresh';
 
 export interface HomePageProps {
   onAddToCart: (product: Product) => void;
@@ -38,6 +39,7 @@ export interface HomePageProps {
   onOpenBulkQuoteModal?: () => void;
   onOpenProductQuickView?: (product: Product) => void;
   products?: Product[];
+  onRefresh?: () => Promise<void> | void;
 }
 
 // ---------------------------------------------------------------------------
@@ -344,7 +346,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateCategory,
   onOpenBulkQuoteModal,
   onOpenProductQuickView,
-  products
+  products,
+  onRefresh
 }) => {
   const navigate = useNavigate();
   const [activePosterIndex, setActivePosterIndex] = useState(0);
@@ -352,6 +355,24 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const electricalScrollRef = useRef<HTMLDivElement>(null);
   const constructionScrollRef = useRef<HTMLDivElement>(null);
+
+  const handleRefresh = async () => {
+    try {
+      const data = await fetchProductsFromSupabase();
+      if (data && data.length > 0) {
+        setDbProducts(data);
+      }
+    } catch (err) {
+      console.warn('Error refreshing products in homepage:', err);
+    }
+    if (onRefresh) {
+      try {
+        await onRefresh();
+      } catch (err) {
+        console.warn('Error in parent onRefresh:', err);
+      }
+    }
+  };
 
   // Fetch live products directly from backend Supabase database
   useEffect(() => {
@@ -567,8 +588,10 @@ export const HomePage: React.FC<HomePageProps> = ({
           {cartQty > 0 ? (
             <div className="flex items-center justify-between bg-yellow-400 text-slate-950 font-black rounded-lg px-2.5 h-8 shadow-xs border border-yellow-500/40">
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   if (onUpdateQuantity) {
                     onUpdateQuantity(product.id, -1);
                   }
@@ -580,8 +603,10 @@ export const HomePage: React.FC<HomePageProps> = ({
               </button>
               <span className="text-xs font-black px-1 select-none">{cartQty} in cart</span>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   if (cartQty < 100) {
                     if (onUpdateQuantity) {
                       onUpdateQuantity(product.id, 1);
@@ -598,8 +623,10 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
           ) : (
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 onAddToCart(product);
               }}
               className="w-full h-8 px-3 bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-slate-950 font-black text-xs rounded-lg transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-1.5 cursor-pointer select-none"
@@ -614,8 +641,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-4 sm:pb-6 font-sans">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12 sm:space-y-16 pt-3 sm:pt-4">
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="min-h-screen bg-white text-slate-900 pb-4 sm:pb-6 font-sans">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12 sm:space-y-16 pt-3 sm:pt-4">
 
         {/* =====================================================================
             ROW 1: POSTERS (Hero Banner Carousel - Uniform Sleek Rectangular Size & Seamless Motion)
@@ -1320,5 +1348,6 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       </div>
     </div>
+  </PullToRefresh>
   );
 };

@@ -9,6 +9,7 @@ import {
   Zap,
   ShieldCheck
 } from 'lucide-react';
+import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -112,11 +113,34 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
     }
   };
 
+  // Drag down to dismiss gesture on mobile
+  const {
+    handleTouchStart: handleSheetTouchStart,
+    handleTouchMove: handleSheetTouchMove,
+    handleTouchEnd: handleSheetTouchEnd,
+    dragStyle
+  } = useBottomSheetDismiss({
+    onClose,
+    disabled: !isOpen
+  });
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col relative animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div 
+        style={dragStyle}
+        className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col relative animate-in zoom-in-95 duration-200"
+      >
+        {/* Mobile Swipe Handle */}
+        <div
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+          className="w-full flex flex-col items-center justify-center pt-2.5 pb-1 sm:hidden cursor-grab active:cursor-grabbing touch-none select-none bg-slate-900"
+        >
+          <div className="w-12 h-1.5 bg-slate-600 rounded-full" />
+        </div>
         
         {/* Close Button */}
         <button

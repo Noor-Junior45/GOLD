@@ -143,7 +143,11 @@ export const FavoritesSubPage: React.FC<FavoritesSubPageProps> = ({
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
-                          onClick={() => onToggleFavorite(product.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onToggleFavorite(product.id);
+                          }}
                           className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/80 hover:bg-white backdrop-blur-md border border-rose-200/70 shadow-[0_2px_8px_rgba(244,63,94,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)] active:scale-95 text-rose-500 hover:text-rose-600 transition-all duration-200 cursor-pointer flex items-center justify-center shrink-0"
                           title="Remove from Favourites"
                           aria-label="Remove from Favourites"
@@ -153,7 +157,9 @@ export const FavoritesSubPage: React.FC<FavoritesSubPageProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             if (onAddToCart) {
                               onAddToCart(product);
                             } else {

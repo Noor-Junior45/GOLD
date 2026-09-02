@@ -875,7 +875,6 @@ export const CartView: React.FC<CartViewProps> = ({
                           type="button"
                           onClick={() => {
                             onUpdateQuantity(product.id, -1, item.selectedColor);
-                            syncCartItemToSupabase(product.id, item.quantity - 1, item.selectedColor);
                           }}
                           className="p-1 sm:p-1.5 hover:bg-slate-200 text-slate-700 transition cursor-pointer active:bg-slate-300"
                           title="Decrease quantity"
@@ -894,7 +893,6 @@ export const CartView: React.FC<CartViewProps> = ({
                             } else if (item.quantity < stockQty) {
                               setStockWarning(null);
                               onUpdateQuantity(product.id, 1, item.selectedColor);
-                              syncCartItemToSupabase(product.id, item.quantity + 1, item.selectedColor);
                             } else {
                               setStockWarning(`Maximum available stock for ${product.name} is ${stockQty} units.`);
                               hapticWarning();
@@ -1039,7 +1037,7 @@ export const CartView: React.FC<CartViewProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-semibold text-slate-800">
-                  Delivery in <span className="font-black text-emerald-700">1 Day (Earliest Possible)</span>
+                  Delivery in <span className="font-black text-emerald-700">60 min</span>
                 </div>
                 <button
                   type="button"

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, MapPin, Send, ExternalLink, User, RefreshCw, X } from 'lucide-react';
 import { KolkataArea } from '../types';
 import { API_BASE_URL } from '../lib/apiBase';
+import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -107,9 +108,32 @@ All items are in stock for fast delivery (1–7 Days) to ${currentArea.name}!`;
     'Difference between 1.5mm and 2.5mm Polycab wire?'
   ];
 
+  // Drag down to dismiss gesture on mobile
+  const {
+    handleTouchStart: handleSheetTouchStart,
+    handleTouchMove: handleSheetTouchMove,
+    handleTouchEnd: handleSheetTouchEnd,
+    dragStyle
+  } = useBottomSheetDismiss({
+    onClose,
+    disabled: !isOpen
+  });
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full h-[85vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/70 backdrop-blur-xs animate-in fade-in">
+      <div 
+        style={dragStyle}
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full h-[90vh] sm:h-[85vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden"
+      >
+        {/* Mobile Swipe Handle */}
+        <div
+          onTouchStart={handleSheetTouchStart}
+          onTouchMove={handleSheetTouchMove}
+          onTouchEnd={handleSheetTouchEnd}
+          className="w-full flex flex-col items-center justify-center pt-2.5 pb-1 sm:hidden cursor-grab active:cursor-grabbing touch-none select-none bg-gradient-to-r from-amber-500 to-yellow-500"
+        >
+          <div className="w-12 h-1.5 bg-slate-900/40 rounded-full" />
+        </div>
         
         {/* Header */}
         <div className="p-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 flex items-center justify-between">

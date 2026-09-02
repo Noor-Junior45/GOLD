@@ -6,18 +6,44 @@ import { Capacitor } from '@capacitor/core';
  */
 
 export function registerServiceWorker() {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || Capacitor.isNativePlatform()) {
+  if (typeof window === 'undefined') {
     return;
   }
 
-  // In development/sandbox preview mode, unregister all existing service workers
-  // to prevent stale caching, Vite module interception, or blank white screens.
-  if (import.meta.env.DEV || window.location.hostname.includes('ais-dev') || window.location.hostname === 'localhost') {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      for (const registration of registrations) {
-        registration.unregister().catch(() => {});
-      }
-    }).catch(() => {});
+  const isPreviewOrDev =
+    import.meta.env.DEV ||
+    window.location.hostname.includes('ais-dev') ||
+    window.location.hostname.includes('ais-pre') ||
+    window.location.hostname.includes('run.app') ||
+    window.location.hostname.includes('localhost') ||
+    window.location.hostname.includes('127.0.0.1') ||
+    window.location.hostname.includes('webcontainer') ||
+    window.self !== window.top; // running inside an iframe / preview container
+
+  // In development, preview, or iframe environments, always aggressively unregister
+  // all service workers and clear stale caches to prevent blank screen hangs or intercepted requests.
+  if (isPreviewOrDev) {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister().catch(() => {});
+        }
+      }).catch(() => {});
+    }
+
+    if ('caches' in window) {
+      window.caches.keys().then((keys) => {
+        for (const key of keys) {
+          if (key.startsWith('buildnow') || key.startsWith('giriraj')) {
+            window.caches.delete(key).catch(() => {});
+          }
+        }
+      }).catch(() => {});
+    }
+    return;
+  }
+
+  if (!('serviceWorker' in navigator) || Capacitor.isNativePlatform()) {
     return;
   }
 
@@ -38,7 +64,7 @@ export function registerServiceWorker() {
         });
       })
       .catch((err) => {
-        console.warn('[SW] Registration failed:', err);
+        console.warn('[SW] Registration notice:', err);
       });
   });
 }

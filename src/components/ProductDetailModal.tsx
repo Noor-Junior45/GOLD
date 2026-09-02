@@ -105,7 +105,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     hapticMedium();
     onAddToCart({
       ...product,
@@ -613,6 +617,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {(!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0)) ? (
                 <button
+                  type="button"
                   disabled
                   className="flex-1 py-3 px-6 rounded-xl bg-slate-200 text-slate-500 font-black text-sm flex items-center justify-center cursor-not-allowed border border-slate-300 shadow-none"
                 >
@@ -620,6 +625,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </button>
               ) : quantityInCart === 0 ? (
                 <button
+                  type="button"
                   onClick={handleAdd}
                   className="flex-1 py-3 px-6 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/30 active:scale-98"
                 >
@@ -629,7 +635,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               ) : (
                 <div className="flex items-center gap-3 bg-yellow-400 text-slate-950 font-black rounded-xl px-4 py-2 shadow-md border border-yellow-500/40">
                   <button
-                    onClick={() => onUpdateQuantity(product.id, -1, hasColorOptions ? selectedWireColor : undefined)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onUpdateQuantity(product.id, -1, hasColorOptions ? selectedWireColor : undefined);
+                    }}
                     className="p-1 hover:bg-yellow-500 rounded transition-colors cursor-pointer active:scale-95"
                     title="Decrease (reduces to 0)"
                   >
@@ -639,7 +650,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {quantityInCart} in Cart
                   </span>
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       if (quantityInCart < 100) {
                         onUpdateQuantity(product.id, 1, hasColorOptions ? selectedWireColor : undefined);
                       }

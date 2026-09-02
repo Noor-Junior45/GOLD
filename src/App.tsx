@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Product, CartItem, KolkataArea, SavedAddress, Order, WiringServiceBooking, UserProfile } from './types';
 import { INITIAL_PRODUCTS } from './data/products';
@@ -50,6 +50,8 @@ import {
   getInitialAuthSession,
   fetchProductsFromSupabase,
   fetchUserProfileFromSupabase,
+  fetchUserOrders,
+  retryPendingSync,
   subscribeToUserProfile,
   safeGetItem,
   safeSetItem,
@@ -129,19 +131,26 @@ export default function App() {
   
   // Cart State - Local Storage Backed for zero loss
   const [cartItems, setCartItems] = useState<CartItem[]>(() => getLocalCartItems());
+  const isInitialCartSync = useRef(true);
 
-  // Listen for cross-component and tab cart update events
+  // Sync cart state to localStorage whenever cartItems changes
   useEffect(() => {
-    const handleCartSync = (e: Event) => {
-      const customEvent = e as CustomEvent<{ items?: CartItem[] }>;
-      if (customEvent.detail && Array.isArray(customEvent.detail.items)) {
-        setCartItems(customEvent.detail.items);
-      } else {
+    if (isInitialCartSync.current) {
+      isInitialCartSync.current = false;
+      return;
+    }
+    saveLocalCartItems(cartItems);
+  }, [cartItems]);
+
+  // Listen for cross-tab storage updates
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key && e.key.includes('cart')) {
         setCartItems(getLocalCartItems());
       }
     };
-    window.addEventListener('giriraj_cart_updated', handleCartSync);
-    return () => window.removeEventListener('giriraj_cart_updated', handleCartSync);
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Modals & Panels
@@ -616,12 +625,15 @@ export default function App() {
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: Product, quantityToAdd: number = 1) => {
     if (!product || product.id === undefined || product.id === null) return;
     const prodIdStr = String(product.id);
     const productCol = product.selectedColor || undefined;
+    const qtyToAdd = Math.max(1, Number(quantityToAdd) || 1);
+
     hapticMedium();
-    trackGAAddToCart(product, 1, productCol);
+    trackGAAddToCart(product, qtyToAdd, productCol);
+
     setCartItems((prev) => {
       const existingIndex = prev.findIndex(
         (i) =>
@@ -629,13 +641,14 @@ export default function App() {
           (i.selectedColor || i.product.selectedColor || undefined) === productCol
       );
       let updated: CartItem[];
+      let targetQty = qtyToAdd;
+
       if (existingIndex !== -1) {
         const existing = prev[existingIndex];
-        const newQty = Math.min(100, (existing.quantity || 1) + 1);
+        targetQty = Math.min(100, (existing.quantity || 0) + qtyToAdd);
         updated = prev.map((item, idx) =>
-          idx === existingIndex ? { ...item, quantity: newQty } : item
+          idx === existingIndex ? { ...item, quantity: targetQty } : item
         );
-        syncCartItemToSupabase(prodIdStr, newQty, productCol).catch(() => {});
       } else {
         const newItem: CartItem = {
           product: {
@@ -643,30 +656,32 @@ export default function App() {
             id: prodIdStr,
             price: Number(product.price || 0)
           },
-          quantity: 1,
+          quantity: targetQty,
           selectedColor: productCol
         };
         updated = [...prev, newItem];
-        syncCartItemToSupabase(prodIdStr, 1, productCol).catch(() => {});
       }
-      saveLocalCartItems(updated);
+
+      // Sync to Supabase in background
+      syncCartItemToSupabase(prodIdStr, targetQty, productCol).catch(() => {});
       return updated;
     });
   };
 
   const handleUpdateCartQuantity = (productId: string, delta: number, color?: string) => {
     const prodIdStr = String(productId);
-    if (delta > 0) {
-      hapticLight();
-    } else {
-      hapticLight();
-    }
+    hapticLight();
+
     setCartItems((prev) => {
+      let updatedQtyForSync: number | null = null;
+      let targetColorForSync: string | undefined = color;
+
       const updated = prev
         .map((i) => {
           const matchColor = color !== undefined ? (i.selectedColor || i.product.selectedColor) === color : true;
           if (String(i.product.id) === prodIdStr && matchColor) {
             const newQty = i.quantity + delta;
+            targetColorForSync = i.selectedColor;
             if (delta > 0) {
               trackGAAddToCart(i.product, delta, i.selectedColor);
             } else if (delta < 0) {
@@ -674,16 +689,23 @@ export default function App() {
             }
             if (newQty <= 0) {
               hapticWarning();
-              removeCartItemFromSupabase(prodIdStr).catch(() => {});
+              updatedQtyForSync = 0;
               return null; // remove from cart when reaching 0
             }
-            syncCartItemToSupabase(prodIdStr, Math.min(100, newQty), color).catch(() => {});
-            return { ...i, quantity: Math.min(100, newQty) };
+            const clampedQty = Math.min(100, Math.max(1, newQty));
+            updatedQtyForSync = clampedQty;
+            return { ...i, quantity: clampedQty };
           }
           return i;
         })
         .filter(Boolean) as CartItem[];
-      saveLocalCartItems(updated);
+
+      if (updatedQtyForSync === 0) {
+        removeCartItemFromSupabase(prodIdStr).catch(() => {});
+      } else if (updatedQtyForSync !== null) {
+        syncCartItemToSupabase(prodIdStr, updatedQtyForSync, targetColorForSync).catch(() => {});
+      }
+
       return updated;
     });
   };
@@ -701,22 +723,19 @@ export default function App() {
       if (itemToRemove) {
         trackGARemoveFromCart(itemToRemove.product, itemToRemove.quantity);
       }
-      const updated = prev.filter(
+      return prev.filter(
         (i) =>
           !(
             String(i.product.id) === prodIdStr &&
             (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
           )
       );
-      saveLocalCartItems(updated);
-      return updated;
     });
   };
 
   const handleClearCart = () => {
     hapticWarning();
     clearCartInSupabase().catch(() => {});
-    saveLocalCartItems([]);
     setCartItems([]);
   };
 
@@ -763,7 +782,6 @@ export default function App() {
             : item
         );
       }
-      saveLocalCartItems(updated);
       return updated;
     });
   };
@@ -802,6 +820,39 @@ export default function App() {
       navigate('/construction');
     } else {
       navigate('/');
+    }
+  };
+
+  // Pull-to-refresh handler: refreshes live catalog, orders, profile & offline sync queue
+  const handleRefreshAll = async () => {
+    try {
+      const promises: Promise<any>[] = [
+        fetchProductsFromSupabase().then((data) => {
+          if (data && data.length > 0) setProducts(data);
+        }),
+        fetchUserOrders().then((freshOrders) => {
+          if (freshOrders) setOrders(freshOrders);
+        }),
+        fetchCartItemsFromSupabase().then((dbCart) => {
+          if (dbCart !== null) setCartItems(dbCart);
+        }),
+        retryPendingSync()
+      ];
+
+      if (userProfile?.id) {
+        promises.push(
+          fetchUserProfileFromSupabase(userProfile.id).then((cloudProf) => {
+            if (cloudProf) {
+              setUserProfile((prev) => ({ ...prev, ...cloudProf }));
+            }
+          })
+        );
+      }
+
+      await Promise.allSettled(promises);
+      showToast('Live catalog & order status synced', 'success', 2500);
+    } catch (err) {
+      console.warn('Pull-to-refresh sync error:', err);
     }
   };
 
@@ -1094,6 +1145,7 @@ export default function App() {
               <OrderHistoryView
                 orders={orders}
                 onOpenShop={() => navigate('/electrical')}
+                onRefresh={handleRefreshAll}
               />
             }
           />
@@ -1128,6 +1180,7 @@ export default function App() {
                 onAddToCart={handleAddToCart}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
+                onRefresh={handleRefreshAll}
                 onNavigateCategory={(categoryName) => {
                   if (categoryName.toLowerCase().includes('wire') || categoryName.toLowerCase().includes('switch') || categoryName.toLowerCase().includes('electric')) {
                     setActiveCategory('electrical');

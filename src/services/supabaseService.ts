@@ -109,9 +109,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     retryPendingSync().catch(() => {});
   });
-  // Trigger on load
+  // Trigger on load only if online
   setTimeout(() => {
-    retryPendingSync().catch(() => {});
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      retryPendingSync().catch(() => {});
+    }
   }, 3000);
 }
 
@@ -209,11 +211,15 @@ export function getUserScopeKeyFromUser(user?: { id?: string; email?: string | n
 }
 
 /**
- * Purges legacy unscoped global localStorage keys to permanently eliminate cross-user data leakage
+ * Purges legacy unscoped global localStorage keys to permanently eliminate cross-user data leakage (runs once)
  */
 export function purgeLegacyUnscopedStorage(): void {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
+    const PURGE_DONE_FLAG = 'giriraj_legacy_purge_v1_done';
+    if (localStorage.getItem(PURGE_DONE_FLAG)) {
+      return;
+    }
     const legacyKeys = [
       'giriraj_user_phone',
       'giriraj_user_name',
@@ -236,6 +242,7 @@ export function purgeLegacyUnscopedStorage(): void {
       'giriraj_master_orders'
     ];
     legacyKeys.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(PURGE_DONE_FLAG, 'true');
   } catch (e) {
     // ignore
   }
@@ -367,7 +374,10 @@ export async function resetPasswordForEmail(
   email: string
 ): Promise<{ error: Error | null; success: boolean }> {
   try {
-    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+    const redirectTo = isNative
+      ? 'buildnow://reset-password'
+      : (typeof window !== 'undefined' ? window.location.origin : undefined);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
       redirectTo
     });
@@ -884,6 +894,7 @@ export async function saveUserProfile(
     dob?: string;
     refundBalance?: number;
     cashbackBalance?: number;
+    walletBalance?: number;
   },
   userScopeOverride?: string
 ): Promise<{ success: boolean; profile: UserProfile; error?: string }> {
@@ -916,8 +927,9 @@ export async function saveUserProfile(
     refundBalance: data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance,
     cashbackBalance: data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance,
     walletBalance:
-      (data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance || 0) +
-      (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0)
+      data.walletBalance !== undefined
+        ? data.walletBalance
+        : (existing.walletBalance !== undefined ? existing.walletBalance : ((existing.refundBalance || 0) + (existing.cashbackBalance || 0)))
   };
 
   if (scope) {
@@ -967,6 +979,7 @@ const profileBroadcastChannel =
 type ProfileListener = (profile: Partial<UserProfile>) => void;
 const profileListeners: Set<ProfileListener> = new Set();
 let userProfileRealtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+let userProfileRealtimeChannelUserId: string | null = null;
 
 export function broadcastUserProfileUpdate(profile: Partial<UserProfile>, userId?: string): void {
   // 1. Dispatch custom event for current window
@@ -1006,9 +1019,19 @@ export function subscribeToUserProfile(
 
   profileListeners.add(callback);
 
+  // Tear down channel if user changed
+  if (userProfileRealtimeChannel && userProfileRealtimeChannelUserId !== userId) {
+    try {
+      supabase.removeChannel(userProfileRealtimeChannel);
+    } catch {}
+    userProfileRealtimeChannel = null;
+    userProfileRealtimeChannelUserId = null;
+  }
+
   // Set up Supabase Realtime Channel if not already active
   const channelName = `profile_sync_${userId}`;
   if (!userProfileRealtimeChannel) {
+    userProfileRealtimeChannelUserId = userId;
     userProfileRealtimeChannel = supabase
       .channel(channelName)
       .on(
@@ -1085,6 +1108,7 @@ export function subscribeToUserProfile(
     if (profileListeners.size === 0 && userProfileRealtimeChannel) {
       supabase.removeChannel(userProfileRealtimeChannel);
       userProfileRealtimeChannel = null;
+      userProfileRealtimeChannelUserId = null;
     }
   };
 }
@@ -1095,6 +1119,13 @@ export function clearUserProfile(): void {
   // This ensures that when the user logs back in with their account, their
   // full order history and addresses are immediately preserved and restored.
   activeUserScope = null;
+  if (userProfileRealtimeChannel) {
+    try {
+      supabase.removeChannel(userProfileRealtimeChannel);
+    } catch {}
+    userProfileRealtimeChannel = null;
+    userProfileRealtimeChannelUserId = null;
+  }
 }
 
 // ============================================================================

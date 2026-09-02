@@ -1580,6 +1580,26 @@ async function startServer() {
 
       const validatedOrder = parseResult.data;
 
+      // 2.1 Server-side price validation to prevent tampered totals
+      const computedItemTotal = validatedOrder.items.reduce((sum, it) => {
+        const itemPrice = typeof it.product?.price === "number" ? it.product.price : 0;
+        return sum + itemPrice * (it.quantity || 1);
+      }, 0);
+      const computedGrandTotal = Math.max(
+        0,
+        computedItemTotal +
+          (validatedOrder.deliveryFee || 0) +
+          (validatedOrder.handlingFee || 0) -
+          (validatedOrder.discount || 0)
+      );
+
+      if (Math.abs(validatedOrder.totalAmount - computedGrandTotal) > 1) {
+        return res.status(400).json({
+          success: false,
+          message: `Price mismatch: Computed total is ₹${computedGrandTotal}, but submitted total was ₹${validatedOrder.totalAmount}.`
+        });
+      }
+
       // 3. Database Persistence (Supabase Orders Table)
       const formattedServerItems = validatedOrder.items.map((it) => {
         const color = it.selectedColor || it.product?.selectedColor || undefined;
@@ -3061,9 +3081,9 @@ Tone: direct, confident, objective. Output ONLY the single sentence. No quotatio
 Customer is located in ${userArea || 'Kolkata Metropolitan Area'} (PIN: ${pincode || '700039'}).
 Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBSEDCL standards, conduit sizing, cement and TMT recommendations) and reference Kolkata locations like Kasba, Nator Park, Salt Lake Sector V, New Town, Park Street, or Gariahat where relevant.`;
 
-      // Call Gemini 3.7 Flash with Google Maps tool
+      // Call Gemini 2.5 Flash with Google Maps tool
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: `${systemPrompt}\n\nCustomer question: ${prompt}`,
         config: {
           tools: [{ googleMaps: {} }],
@@ -3195,7 +3215,7 @@ Knowledge Base & Service Details:
       ];
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: formattedContents,
       });
 
@@ -3360,7 +3380,7 @@ Respond ONLY with a valid JSON object matching the following structure:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -3430,7 +3450,10 @@ Respond ONLY with a valid JSON object matching the following structure:
   // Vite middleware for development vs Production Static Serving with Intelligent Caching
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: true,
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

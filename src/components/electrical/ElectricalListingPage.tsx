@@ -510,8 +510,10 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                       {cartQty > 0 ? (
                         <div className="flex items-center justify-between bg-yellow-400 text-slate-950 font-black rounded-lg px-2.5 py-1.5 shadow-xs border border-yellow-500/30">
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.preventDefault();
+                              e.stopPropagation();
                               if (onUpdateQuantity) {
                                 onUpdateQuantity(adapted.id, -1);
                               }
@@ -523,8 +525,10 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                           </button>
                           <span className="text-xs font-black px-2">{cartQty} in cart</span>
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.preventDefault();
+                              e.stopPropagation();
                               if (cartQty < 100) {
                                 if (onUpdateQuantity) {
                                   onUpdateQuantity(adapted.id, 1);
@@ -542,8 +546,10 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                         </div>
                       ) : (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             onAddToCart(adapted);
                           }}
                           className="w-full py-2 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 shadow-xs border border-yellow-500/20"

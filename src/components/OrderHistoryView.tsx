@@ -30,18 +30,21 @@ import { getOrderWhatsAppUrl } from '../services/emailService';
 import { deleteFirestoreOrder, clearAllUserOrders } from '../services/supabaseService';
 import { OrderTrackingTimeline } from './OrderTrackingTimeline';
 import { downloadInvoicePDF } from '../utils/invoiceGenerator';
+import { PullToRefresh } from './PullToRefresh';
 
 interface OrderHistoryViewProps {
   orders: Order[];
   onOpenOrderModal?: (order: Order) => void;
   onOpenShop: () => void;
   onBack?: () => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
   orders,
   onOpenShop,
-  onBack
+  onBack,
+  onRefresh
 }) => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
@@ -751,8 +754,9 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
   // MAIN ORDER HISTORY LIST (OUTSIDE VIEW WITH PRODUCT IMAGE & DATE ROWS)
   // =========================================================================
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-      {/* Top Header */}
+    <PullToRefresh onRefresh={onRefresh || (() => {})} refreshingText="Syncing real-time order status...">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        {/* Top Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {onBack && (
@@ -1134,5 +1138,6 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
         </div>
       )}
     </div>
+  </PullToRefresh>
   );
 };

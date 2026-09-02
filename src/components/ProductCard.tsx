@@ -42,7 +42,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     setIsFav(updatedState);
   };
 
-  const handleAdd = () => {
+  const handleAdd = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     hapticMedium();
     onAddToCart({
       ...product,
@@ -211,6 +215,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             ) : quantityInCart === 0 ? (
               <button
+                type="button"
                 onClick={handleAdd}
                 className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-yellow-500/30"
               >
@@ -220,7 +225,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             ) : (
               <div className="flex items-center bg-yellow-400 text-slate-950 font-black rounded-xl overflow-hidden shadow-xs border border-yellow-500/40">
                 <button
-                  onClick={() => onUpdateQuantity(product.id, -1)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onUpdateQuantity(product.id, -1);
+                  }}
                   className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
                   title="Decrease (reduces to 0)"
                 >
@@ -230,7 +240,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {quantityInCart}
                 </span>
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (quantityInCart < 100) {
                       onUpdateQuantity(product.id, 1);
                     }

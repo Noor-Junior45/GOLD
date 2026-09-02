@@ -500,7 +500,7 @@ export const TechniciansPage: React.FC<TechniciansPageProps> = ({
           </div>
         ) : allTechnicians.length === 0 ? (
           /* COMING SOON VIEW (When no technician is in Supabase yet) */
-          <div className="py-16 sm:py-20 px-6 text-center max-w-lg mx-auto bg-white rounded-3xl shadow-xs space-y-5">
+          <div className="py-16 sm:py-20 px-6 text-center max-w-lg mx-auto bg-white rounded-3xl border-0 border-none shadow-none space-y-5">
             <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
               <Wrench className="w-8 h-8 stroke-[1.75]" />
             </div>
@@ -533,20 +533,6 @@ export const TechniciansPage: React.FC<TechniciansPageProps> = ({
                   <p className="text-[11px] text-slate-500">Transparent rates & instant booking.</p>
                 </div>
               </div>
-            </div>
-
-            <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  hapticLight();
-                  loadTechniciansData();
-                }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh & Check Network</span>
-              </button>
             </div>
           </div>
         ) : sortedTechnicians.length === 0 ? (
