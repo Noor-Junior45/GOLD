@@ -16,6 +16,7 @@ import {
   signInWithGoogle,
   fetchUserProfileFromSupabase
 } from '../services/supabaseService';
+import { sendLoginNotificationEmail } from '../services/securityNotificationService';
 
 interface LoginPageProps {
   onAuthSuccess: (phone: string, name: string, email?: string) => void;
@@ -112,6 +113,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         const finalPhone = cloudProf?.phone || data.user.phone || data.user.user_metadata?.phone || '';
 
         onAuthSuccess(finalPhone, userFullName, cleanEmail);
+        sendLoginNotificationEmail({
+          email: cleanEmail,
+          name: userFullName,
+          userId: data.user.id,
+          loginMethod: 'Email & Password',
+          force: true
+        }).catch((e) => console.debug('[Security Alert Trigger Note]:', e));
         navigate('/');
       }
     } catch (err: unknown) {
@@ -164,6 +172,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         const finalPhone = cloudProf?.phone || data.user.phone || data.user.user_metadata?.phone || '';
 
         onAuthSuccess(finalPhone, userFullName, cleanEmail);
+        sendLoginNotificationEmail({
+          email: cleanEmail,
+          name: userFullName,
+          userId: data.user.id,
+          loginMethod: 'New Account Creation & Password Sign-in',
+          force: true
+        }).catch((e) => console.debug('[Security Alert Trigger Note]:', e));
         navigate('/');
       } else {
         setInfoMessage(`Account created! We have sent a confirmation link to ${cleanEmail}.`);

@@ -169,6 +169,25 @@ export const NotificationsSubPage: React.FC<NotificationsSubPageProps> = ({
               />
             </button>
           </div>
+
+          {/* Account Security Login Alerts (Mandatory / Always Active for Protection) */}
+          <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100 bg-emerald-50/60 -mx-5 -mb-5 p-5 rounded-b-2xl">
+            <div className="flex-1 pr-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  🛡️ Active Security
+                </span>
+                <p className="text-sm font-bold text-slate-900 leading-snug">Sign-in &amp; Location Alerts</p>
+              </div>
+              <p className="text-xs text-slate-600 font-normal mt-1 leading-relaxed">
+                Instant email notification with timestamp, approximate location &amp; device details sent upon every login (Binance &amp; Uber style security protocol).
+              </p>
+            </div>
+            <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-lg shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Enforced
+            </div>
+          </div>
         </div>
       </div>
     </div>

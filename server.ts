@@ -478,6 +478,167 @@ function generateTestEmailHtml(customerName: string): string {
   `;
 }
 
+// HTML Generator for Security Login Notification Alert (Binance / Uber / Zomato style)
+function generateLoginAlertEmailHtml(params: {
+  customerName: string;
+  email: string;
+  loginTime: string;
+  ipAddress?: string;
+  location?: string;
+  device?: string;
+  os?: string;
+  browser?: string;
+  loginMethod?: string;
+}): string {
+  const name = params.customerName || 'Valued Customer';
+  const time = params.loginTime || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' (IST)';
+  const location = params.location || 'Kolkata, West Bengal, India';
+  const ip = params.ipAddress || 'Protected / Encrypted';
+  const device = params.device || 'Android Smartphone';
+  const os = params.os || 'Android';
+  const browser = params.browser || 'BuildNow App';
+  const method = params.loginMethod || 'Email & Password';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Alert: New Sign-in to your BuildNow Account</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0b1120; margin: 0; padding: 24px; color: #1e293b;">
+  <div style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5); border: 1px solid #e2e8f0;">
+    
+    <!-- Top Security Banner -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 28px 24px 22px 24px; text-align: center; border-bottom: 3px solid #facc15;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; background-color: rgba(250, 204, 21, 0.15); border: 1px solid #facc15; color: #fef08a; font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;">
+        🛡️ ACCOUNT SECURITY ALERT
+      </div>
+      <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.3px;">
+        New Login Detected
+      </h1>
+      <p style="color: #94a3b8; font-size: 13px; margin: 0; font-weight: 500;">
+        BuildNow &amp; Giriraj Power Security Center
+      </p>
+    </div>
+
+    <!-- Main Content Area -->
+    <div style="padding: 28px 24px 24px 24px;">
+      <p style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
+        Hello <strong style="color: #0f172a;">${name}</strong>,
+      </p>
+      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 22px 0;">
+        We detected a successful sign-in to your <strong>BuildNow</strong> account (<span style="color: #2563eb; font-weight: 600;">${params.email}</span>). Please review the details below:
+      </p>
+
+      <!-- Activity Details Card (Binance / Uber style) -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 24px;">
+        <div style="background-color: #f1f5f9; padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #475569;">
+          📋 Sign-in Activity Summary
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5;">
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600; width: 38%;">🕒 Date &amp; Time</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${time}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7; background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">📍 Location</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">
+              <span style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                ${location}
+              </span>
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">📱 Device &amp; OS</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${device} (${os})</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7; background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">🌐 Browser / Client</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${browser}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">🔑 Login Method</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">
+              <span style="display: inline-block; background-color: #fef08a; color: #854d0e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                ${method}
+              </span>
+            </td>
+          </tr>
+          <tr style="background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">🔢 IP Address</td>
+            <td style="padding: 12px 18px; color: #475569; font-family: monospace; font-size: 12px; font-weight: 600;">${ip}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Was this you? verification status block -->
+      <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start;">
+          <div style="font-size: 18px; margin-right: 10px; line-height: 1;">✅</div>
+          <div>
+            <strong style="color: #065f46; font-size: 13px; display: block; margin-bottom: 2px;">Was this you?</strong>
+            <span style="color: #047857; font-size: 12px; line-height: 1.4; display: block;">
+              If you just logged into BuildNow, you can safely ignore this email. No further action is required.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Warning & Action CTAs -->
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 18px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+          <div style="font-size: 18px; margin-right: 10px; line-height: 1;">⚠️</div>
+          <div>
+            <strong style="color: #991b1b; font-size: 13px; display: block; margin-bottom: 2px;">Don't recognize this login?</strong>
+            <span style="color: #b91c1c; font-size: 12px; line-height: 1.4; display: block;">
+              If you did not perform this login, someone else may have gained unauthorized access to your account.
+            </span>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 14px;">
+          <a href="https://www.girirajpower.in/login" style="display: inline-block; background-color: #dc2626; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 13px; padding: 10px 22px; border-radius: 8px; margin: 4px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
+            🔒 Secure Account &amp; Reset Password
+          </a>
+          <a href="tel:+918777400280" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; margin: 4px;">
+            📞 Security Helpline (+91 87774 00280)
+          </a>
+        </div>
+      </div>
+
+      <!-- Security Best Practices -->
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #64748b; line-height: 1.5;">
+        <strong style="color: #334155; font-size: 12px;">🛡️ Security Tips from Giriraj Power:</strong>
+        <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+          <li>Never share your passwords, OTP codes, or magic links with anyone.</li>
+          <li>Giriraj Power / BuildNow staff will <strong>never</strong> call or email you asking for your password.</li>
+          <li>Always verify you are visiting <code>https://www.girirajpower.in</code> before entering your details.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #0f172a; color: #94a3b8; padding: 20px 24px; text-align: center; font-size: 11px; line-height: 1.5; border-top: 1px solid #334155;">
+      <p style="margin: 0 0 6px 0; color: #f1f5f9; font-weight: 700;">
+        BuildNow by Giriraj Power — kasba Central Dispatch Hub
+      </p>
+      <p style="margin: 0 0 8px 0;">
+        Kasba, Kolkata 700039, West Bengal | Support Email: team@girirajpower.in
+      </p>
+      <p style="margin: 0; color: #64748b; font-size: 10px;">
+        This automated security notification was sent to ${params.email} in accordance with our account protection protocol.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+}
+
 // Official Organization Email, Admin Notification Destinations & Resend Receiving Domain
 const RESEND_INBOUND_DOMAIN = "oieldiakir.resend.app";
 const RESEND_INBOUND_EMAIL = process.env.RESEND_INBOUND_EMAIL || "orders@oieldiakir.resend.app";
@@ -2486,6 +2647,20 @@ Tone: direct, confident, objective. Output ONLY the single sentence. No quotatio
         subject = subject || `⚡ Service Booking Confirmed #${booking.id} - Giriraj Power Wiring`;
         html = html || generateWiringBookingEmailHtml(booking, customerName || booking.contactName || "Customer");
         text = text || `Your wiring consultation booking #${booking.id} has been confirmed for ${booking.projectType} at ${booking.siteAddress}.`;
+      } else if (type === "login_alert") {
+        subject = subject || `🛡️ Security Alert: New sign-in to your BuildNow account`;
+        html = html || generateLoginAlertEmailHtml({
+          customerName: customerName || "Customer",
+          email: to,
+          loginTime: req.body?.loginTime || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' (IST)',
+          ipAddress: req.body?.ipAddress || "Protected",
+          location: req.body?.location || "Kolkata, West Bengal, India",
+          device: req.body?.device || "Mobile Device",
+          os: req.body?.os || "Android",
+          browser: req.body?.browser || "BuildNow App",
+          loginMethod: req.body?.loginMethod || "Email & Password"
+        });
+        text = text || `Security Alert: A new sign-in was detected on your BuildNow account (${to}) at ${req.body?.loginTime || 'recently'}. Location: ${req.body?.location || 'Kolkata, India'}. If this wasn't you, secure your account at https://www.girirajpower.in/login`;
       } else if (type === "test_email") {
         subject = subject || "⚡ Resend Email Verification - Giriraj Power Kolkata";
         html = html || generateTestEmailHtml(customerName || "Valued Customer");
@@ -2524,6 +2699,126 @@ Tone: direct, confident, objective. Output ONLY the single sentence. No quotatio
       return res.status(500).json({
         success: false,
         message: err.message || "An unexpected error occurred while sending email.",
+        error: String(err)
+      });
+    }
+  });
+
+  // =========================================================================
+  // REAL-TIME LOGIN SECURITY ALERT DISPATCH (BINANCE / UBER / ZOMATO STYLE)
+  // Sends an immediate, beautifully styled security email when user logs in
+  // Includes timestamp, approximate location, device details & IP address
+  // =========================================================================
+  const recentLoginAlerts = new Map<string, number>();
+
+  app.post("/api/auth/login-notification", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const {
+        email,
+        name,
+        userId,
+        loginMethod,
+        device,
+        os,
+        browser,
+        clientTime,
+        clientTimeFormatted,
+        clientLocation,
+        force
+      } = req.body || {};
+
+      const cleanEmail = (email || "").trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+        return res.status(400).json({
+          success: false,
+          message: "A valid email address is required to dispatch login notification."
+        });
+      }
+
+      // In-memory deduplication (suppress duplicate triggers within 60s for the same account)
+      const now = Date.now();
+      const lastSent = recentLoginAlerts.get(cleanEmail);
+      if (!force && lastSent && now - lastSent < 60000) {
+        return res.status(200).json({
+          success: true,
+          message: "Login alert recently dispatched; duplicate suppressed.",
+          debounced: true
+        });
+      }
+      recentLoginAlerts.set(cleanEmail, now);
+
+      // Extract client IP
+      const forwarded = req.headers["x-forwarded-for"];
+      let clientIp = "";
+      if (typeof forwarded === "string") {
+        clientIp = forwarded.split(",")[0].trim();
+      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+        clientIp = forwarded[0].trim();
+      } else {
+        clientIp = req.socket.remoteAddress || req.ip || "";
+      }
+      if (clientIp.startsWith("::ffff:")) {
+        clientIp = clientIp.replace("::ffff:", "");
+      }
+
+      // Determine location
+      let finalLocation = (clientLocation || "").trim();
+      if (!finalLocation) {
+        const cfCity = req.headers["cf-ipcity"] as string;
+        const cfRegion = req.headers["cf-ipregion"] as string;
+        const cfCountry = req.headers["cf-ipcountry"] as string;
+        if (cfCity || cfRegion || cfCountry) {
+          finalLocation = [cfCity, cfRegion, cfCountry === "IN" ? "India" : cfCountry].filter(Boolean).join(", ");
+        }
+      }
+      if (!finalLocation || finalLocation === "Unknown" || finalLocation.toLowerCase().includes("undefined")) {
+        finalLocation = "Kolkata, West Bengal, India";
+      }
+
+      // Format formatted time in IST
+      const displayTime =
+        clientTimeFormatted ||
+        new Date().toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          dateStyle: "full",
+          timeStyle: "medium"
+        }) + " (IST)";
+
+      const customerName = name || cleanEmail.split("@")[0] || "Valued Customer";
+
+      const html = generateLoginAlertEmailHtml({
+        customerName,
+        email: cleanEmail,
+        loginTime: displayTime,
+        ipAddress: clientIp || "Protected",
+        location: finalLocation,
+        device: device || "Mobile Device",
+        os: os || "Android",
+        browser: browser || "BuildNow App",
+        loginMethod: loginMethod || "Email & Password"
+      });
+
+      const subject = `🛡️ Security Alert: New sign-in to your BuildNow account (${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })} IST)`;
+      const text = `Hello ${customerName},\n\nA new login was detected on your BuildNow account (${cleanEmail}) on ${displayTime}.\nLocation: ${finalLocation}\nDevice: ${device || 'Mobile'} (${os || 'Android'})\nBrowser: ${browser || 'BuildNow App'}\nMethod: ${loginMethod || 'Password'}\n\nIf this was you, no action is required.\nIf you did not make this login, please secure your account immediately at https://www.girirajpower.in/login or call support at +91 87774 00280.`;
+
+      const dispatchResult = await dispatchResendEmail({
+        to: cleanEmail,
+        subject,
+        html,
+        text
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Security login notification successfully dispatched.",
+        details: dispatchResult
+      });
+    } catch (err: any) {
+      console.error("[Login Notification Handler Error]:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to dispatch login notification.",
         error: String(err)
       });
     }
@@ -3469,6 +3764,32 @@ Respond ONLY with a valid JSON object matching the following structure:
       });
     }
   });
+
+  // Explicitly serve Digital Asset Links for Android TWA verification with CORS
+  app.get("/.well-known/assetlinks.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    const assetLinksPath = path.join(process.cwd(), "public", ".well-known", "assetlinks.json");
+    res.sendFile(assetLinksPath);
+  });
+
+  // Explicitly serve PWA Manifest with standard MIME types and CORS
+  app.get(["/manifest.json", "/manifest.webmanifest"], (req, res) => {
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const manifestPath = path.join(process.cwd(), "public", "manifest.json");
+    res.sendFile(manifestPath);
+  });
+
+  // Explicitly serve public icons with CORS
+  app.use("/icons", express.static(path.join(process.cwd(), "public", "icons"), {
+    setHeaders: (res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    }
+  }));
 
   // Vite middleware for development vs Production Static Serving with Intelligent Caching
   if (process.env.NODE_ENV !== "production") {

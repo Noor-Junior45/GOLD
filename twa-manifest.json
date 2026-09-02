@@ -1,6 +1,6 @@
 {
   "packageId": "com.girirajpower.buildnow",
-  "host": "ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app",
+  "host": "www.girirajpower.in",
   "name": "BuildNow",
   "launcherName": "BuildNow",
   "display": "standalone",
@@ -13,8 +13,8 @@
   "backgroundColor": "#FFFFFF",
   "enableNotifications": true,
   "startUrl": "/",
-  "iconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-512.png",
-  "maskableIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-512-maskable.png",
+  "iconUrl": "https://www.girirajpower.in/icons/icon-512.png",
+  "maskableIconUrl": "https://www.girirajpower.in/icons/icon-512-maskable.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./android.keystore",
@@ -25,25 +25,24 @@
   "shortcuts": [
     {
       "name": "Electrical Supplies",
-      "shortName": "Electrical",
-      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/electrical",
-      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+      "short_name": "Electrical",
+      "url": "https://www.girirajpower.in/electrical",
+      "chosen_icon_url": "https://www.girirajpower.in/icons/icon-192.png"
     },
     {
       "name": "Construction Materials",
-      "shortName": "Construction",
-      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/construction",
-      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+      "short_name": "Construction",
+      "url": "https://www.girirajpower.in/construction",
+      "chosen_icon_url": "https://www.girirajpower.in/icons/icon-192.png"
     },
     {
       "name": "Wiring Services",
-      "shortName": "Wiring",
-      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/services",
-      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+      "short_name": "Wiring",
+      "url": "https://www.girirajpower.in/services",
+      "chosen_icon_url": "https://www.girirajpower.in/icons/icon-192.png"
     }
   ],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/manifest.json",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {

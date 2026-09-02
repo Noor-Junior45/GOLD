@@ -61,9 +61,9 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
     <nav
       id="floating-liquid-bottom-navbar"
       aria-label="Bottom Navigation"
-      className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[84vw] max-w-[310px] sm:max-w-[335px]"
+      className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[78vw] max-w-[275px] sm:max-w-[290px]"
     >
-      <div className="flex items-center justify-between gap-0.5 px-1.5 sm:px-2 py-1 rounded-full bg-white/70 backdrop-blur-3xl backdrop-saturate-200 border border-white/80 shadow-[0_14px_36px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.04),inset_0_1.5px_2px_rgba(255,255,255,0.95),inset_0_-1px_2px_rgba(0,0,0,0.03)] ring-1 ring-black/5 transition-all duration-300">
+      <div className="flex items-center justify-between gap-0.5 px-1.5 sm:px-2 py-1.5 sm:py-2 rounded-full bg-white/45 backdrop-blur-2xl backdrop-saturate-200 border border-white/50 shadow-[0_14px_36px_rgba(0,0,0,0.10),0_2px_8px_rgba(0,0,0,0.03),inset_0_1.5px_2px_rgba(255,255,255,0.7),inset_0_-1px_2px_rgba(0,0,0,0.02)] ring-1 ring-black/5 transition-all duration-300">
         {/* 1. Home Button */}
         <button
           id="floating-nav-home"
@@ -75,7 +75,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           }}
           title="Home"
           aria-label="Home"
-          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
+          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
             isHomeActive
               ? 'text-emerald-600 font-bold scale-[1.04]'
               : 'text-slate-700 hover:text-emerald-600 active:scale-95 font-medium'
@@ -96,7 +96,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           }}
           title="Electrical Supplies"
           aria-label="Electrical Supplies"
-          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
+          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
             isElectricalActive
               ? 'text-blue-600 font-bold scale-[1.04]'
               : 'text-slate-700 hover:text-blue-600 active:scale-95 font-medium'
@@ -119,7 +119,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           }}
           title="Construction Materials"
           aria-label="Construction Materials"
-          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
+          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
             isConstructionActive
               ? 'text-amber-600 font-bold scale-[1.04]'
               : 'text-slate-700 hover:text-amber-600 active:scale-95 font-medium'
@@ -139,7 +139,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           }}
           title="Certified Technicians & Specialists"
           aria-label="Technicians"
-          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
+          className={`flex-1 min-w-0 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-full transition-all duration-200 cursor-pointer bg-transparent border-0 outline-none ${
             isTechnicianActive
               ? 'text-indigo-600 font-bold scale-[1.04]'
               : 'text-slate-700 hover:text-indigo-600 active:scale-95 font-medium'

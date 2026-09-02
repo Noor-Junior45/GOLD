@@ -59,6 +59,7 @@ import {
   setActiveUserScope,
   getStoredAddresses
 } from './services/supabaseService';
+import { sendLoginNotificationEmail } from './services/securityNotificationService';
 import { useVersionCheck } from './hooks/useVersionCheck';
 import { Capacitor } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
@@ -408,6 +409,19 @@ export default function App() {
         setUserPhone(phone || null);
         setUserName(name);
         setupUserSubscriptions(user.id);
+
+        // Real-time security email notification on sign in
+        if (event === 'SIGNED_IN' && email) {
+          const loginMethod = user.app_metadata?.provider === 'google'
+            ? 'Google Account (One-Tap / OAuth)'
+            : 'Email & Password / Session';
+          sendLoginNotificationEmail({
+            email,
+            name,
+            userId: user.id,
+            loginMethod,
+          }).catch((err) => console.debug('[Security Alert Background Trigger]:', err));
+        }
       } else {
         activeUserId = null;
         setActiveUserScope(null);
