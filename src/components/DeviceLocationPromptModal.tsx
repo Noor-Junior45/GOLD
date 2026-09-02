@@ -8,12 +8,14 @@ import {
   Building2,
   ChevronRight,
   Loader2,
-  Check
+  Check,
+  Navigation
 } from 'lucide-react';
 import { KolkataArea, SavedAddress } from '../types';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
 import { ACTIVE_SAVED_ADDRESS_KEY } from '../services/supabaseService';
 import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
+import { getResilientCurrentPosition, reverseGeocodeWithFallback } from '../utils/geolocationHelper';
 
 interface DeviceLocationPromptModalProps {
   isOpen: boolean;
@@ -49,99 +51,64 @@ export const DeviceLocationPromptModal: React.FC<DeviceLocationPromptModalProps>
 
   if (!isOpen) return null;
 
-  const handleEnableLocation = () => {
+  const handleEnableLocation = async () => {
     setGpsLoading(true);
     setGpsError(null);
 
-    if (!navigator.geolocation) {
+    try {
+      // Multi-tier resilient positioning: tries GPS, then Network/Cell, then temporary watch listener
+      const pos = await getResilientCurrentPosition();
+      const lat = pos.lat;
+      const lng = pos.lng;
+
+      // Safe reverse geocoding with fast fallback
+      const { street, matchedArea } = await reverseGeocodeWithFallback(lat, lng, 3500);
+
       setGpsLoading(false);
-      setGpsError('Geolocation is not supported by your browser.');
-      return;
+
+      const appliedArea: KolkataArea = {
+        ...matchedArea,
+        lat,
+        lng,
+        exactStreet: street
+      };
+
+      try {
+        localStorage.removeItem(ACTIVE_SAVED_ADDRESS_KEY);
+        localStorage.setItem('giriraj_active_address', street);
+      } catch (e) {
+        console.error(e);
+      }
+
+      onSelectArea(appliedArea, undefined);
+      onClose();
+    } catch (err: any) {
+      setGpsLoading(false);
+      console.warn('Resilient geolocation error:', err);
+
+      if (err?.code === 1 || String(err?.message || '').toLowerCase().includes('denied')) {
+        setGpsError(
+          'Location access is denied. You can allow location in your device/app settings, or choose your delivery area below.'
+        );
+      } else {
+        setGpsError(
+          'Location timed out or GPS signal is weak indoors. You can pick an area below or search manually.'
+        );
+      }
     }
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        let resolvedStreet = '';
-        let matched = KOLKATA_AREAS[0];
-
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-            { headers: { 'Accept-Language': 'en' } }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.address) {
-              const addr = data.address;
-              const road = addr.road || addr.street || addr.pedestrian || addr.footway || '';
-              const suburb = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.city_district || '';
-              const building = addr.building || addr.amenity || addr.shop || '';
-              const postcode = addr.postcode || '';
-              const parts = [building, road, suburb].filter(Boolean);
-              resolvedStreet = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(', ');
-
-              let minDistance = Number.MAX_VALUE;
-              KOLKATA_AREAS.forEach((a) => {
-                if (a.pincode && postcode && a.pincode === postcode) {
-                  matched = a;
-                  minDistance = 0;
-                } else if (a.lat && a.lng) {
-                  const dist = Math.hypot(a.lat - lat, a.lng - lng);
-                  if (dist < minDistance) {
-                    minDistance = dist;
-                    matched = a;
-                  }
-                }
-              });
-            }
-          }
-        } catch {
-          // Fallback nearest
-        }
-
-        if (!resolvedStreet) {
-          let minDistance = Number.MAX_VALUE;
-          KOLKATA_AREAS.forEach((a) => {
-            if (a.lat && a.lng) {
-              const dist = Math.hypot(a.lat - lat, a.lng - lng);
-              if (dist < minDistance) {
-                minDistance = dist;
-                matched = a;
-              }
-            }
-          });
-          resolvedStreet = matched.exactStreet || matched.name;
-        }
-
-        setGpsLoading(false);
-
-        const appliedArea: KolkataArea = {
-          ...matched,
-          lat,
-          lng,
-          exactStreet: resolvedStreet
-        };
-
-        try {
-          localStorage.removeItem(ACTIVE_SAVED_ADDRESS_KEY);
-          localStorage.setItem('giriraj_active_address', resolvedStreet);
-        } catch (e) {
-          console.error(e);
-        }
-
-        onSelectArea(appliedArea, undefined);
-        onClose();
-      },
-      (err) => {
-        setGpsLoading(false);
-        console.warn('Geolocation error:', err);
-        setGpsError('Permission denied or location timed out. Please select or search manually below.');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+  const handleSelectDefaultHub = () => {
+    const central = KOLKATA_AREAS[0]; // Kasba / Kolkata Central hub
+    const defaultAddress = central.exactStreet || central.name;
+    try {
+      localStorage.removeItem(ACTIVE_SAVED_ADDRESS_KEY);
+      localStorage.setItem('giriraj_active_address', defaultAddress);
+    } catch (e) {
+      console.error(e);
+    }
+    onSelectArea(central, undefined);
+    onClose();
   };
 
   const handleSelectAddress = (addr: SavedAddress) => {
@@ -281,10 +248,31 @@ export const DeviceLocationPromptModal: React.FC<DeviceLocationPromptModalProps>
             </button>
           </div>
 
-          {/* GPS Error message if permission denied */}
+          {/* GPS Error message if permission denied or timed out */}
           {gpsError && (
-            <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium">
-              {gpsError}
+            <div className="p-3 bg-amber-50 border border-amber-200/90 rounded-2xl text-amber-900 text-xs font-medium space-y-2">
+              <p className="leading-relaxed">{gpsError}</p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSelectDefaultHub}
+                  className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 text-amber-900 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <Navigation className="w-3 h-3" />
+                  <span>Set Central Kolkata</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenManualSearch();
+                  }}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <Search className="w-3 h-3" />
+                  <span>Search Area</span>
+                </button>
+              </div>
             </div>
           )}
 

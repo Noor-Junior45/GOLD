@@ -2,6 +2,7 @@ import { IMapProvider, IMapInstance, MapCoordinates, MapInitOptions, MapSearchRe
 import { MapplsProvider } from './MapplsProvider';
 import { GoogleMapsProvider } from './GoogleMapsProvider';
 import { OsmProvider } from './OsmProvider';
+import { getResilientCurrentPosition } from '../../utils/geolocationHelper';
 
 export class MapProviderManager {
   private static instance: MapProviderManager | null = null;
@@ -173,32 +174,14 @@ export class MapProviderManager {
   }
 
   /**
-   * Gets current user coordinates using device GPS.
+   * Gets current user coordinates using multi-tier resilient device GPS/network resolution.
    */
   public async getCurrentPosition(): Promise<MapCoordinates> {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by this device.'));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          resolve({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          });
-        },
-        (err) => {
-          reject(err);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    });
+    const pos = await getResilientCurrentPosition();
+    return {
+      lat: pos.lat,
+      lng: pos.lng
+    };
   }
 
   /**
