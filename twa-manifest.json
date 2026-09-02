@@ -1,0 +1,62 @@
+{
+  "packageId": "com.girirajpower.buildnow",
+  "host": "ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app",
+  "name": "BuildNow",
+  "launcherName": "BuildNow",
+  "display": "standalone",
+  "themeColor": "#0F172A",
+  "themeColorDark": "#0F172A",
+  "navigationColor": "#0F172A",
+  "navigationColorDark": "#0F172A",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-512.png",
+  "maskableIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-512-maskable.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Electrical Supplies",
+      "shortName": "Electrical",
+      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/electrical",
+      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+    },
+    {
+      "name": "Construction Materials",
+      "shortName": "Construction",
+      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/construction",
+      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+    },
+    {
+      "name": "Wiring Services",
+      "shortName": "Wiring",
+      "url": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/services",
+      "chosenIconUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/icons/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://ais-pre-btboarq6s3gletuwniy7rq-190562511229.asia-southeast1.run.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false
+}

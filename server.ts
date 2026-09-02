@@ -1061,6 +1061,29 @@ async function startServer() {
     res.json({ status: "ok", app: "Giriraj Power Kolkata Express" });
   });
 
+  // Digital Asset Links for Trusted Web Activity (TWA) Google Play Store App Verification
+  app.get("/.well-known/assetlinks.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    const assetlinksPath = path.join(process.cwd(), "public", ".well-known", "assetlinks.json");
+    if (fs.existsSync(assetlinksPath)) {
+      res.sendFile(assetlinksPath);
+    } else {
+      res.json([
+        {
+          relation: ["delegate_permission/common.handle_all_urls"],
+          target: {
+            namespace: "android_app",
+            package_name: "com.girirajpower.buildnow",
+            sha256_cert_fingerprints: [
+              "14:6D:E9:7D:0C:6D:77:E5:EE:DE:28:B6:F0:4B:92:47:FD:B3:36:CF:BE:0C:F0:7C:1E:58:E6:C3:FF:11:EB:7B"
+            ]
+          }
+        }
+      ]);
+    }
+  });
+
   // =========================================================================
   // VERSION CHECK & DEPLOYMENT SYNCHRONIZATION ENDPOINTS
   // =========================================================================

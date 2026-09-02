@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "twa:build": "npx @bubblewrap/cli build",
+    "twa:update": "npx @bubblewrap/cli update",
     "cap:sync": "cap sync",
     "cap:build": "npm run build && cap sync",
     "android:open": "cap open android",
