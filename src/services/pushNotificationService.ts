@@ -190,9 +190,13 @@ export async function initPushNotifications(onNavigate?: NavigationHandler): Pro
     }
 
     if (permStatus.receive === 'granted') {
-      await PushNotifications.register().catch((err) => {
-        console.warn('Push notification register skipped/notice (e.g. emulator without GMS):', err);
-      });
+      try {
+        await PushNotifications.register();
+      } catch (err) {
+        // Without google-services.json in android/app/, FirebaseApp throws IllegalStateException.
+        // Catching this cleanly allows the app to boot and run perfectly with Supabase.
+        console.warn('Native push registration skipped (Firebase google-services.json not present):', err);
+      }
     }
 
     isInitialized = true;
@@ -234,8 +238,13 @@ export async function requestPushNotificationPermission(): Promise<boolean> {
     }
 
     if (permStatus.receive === 'granted') {
-      await PushNotifications.register();
-      return true;
+      try {
+        await PushNotifications.register();
+        return true;
+      } catch (regErr) {
+        console.warn('Native push registration skipped (Firebase not configured):', regErr);
+        return false;
+      }
     }
     return false;
   } catch (err) {

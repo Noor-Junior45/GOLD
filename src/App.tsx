@@ -505,22 +505,86 @@ export default function App() {
         if (!urlStr) return;
 
         // Check if OAuth callback with tokens or auth code
-        if (urlStr.includes('#access_token') || urlStr.includes('?access_token') || urlStr.includes('code=')) {
-          // If Supabase redirected back via custom scheme (buildnow://login#access_token=...)
-          const hashIdx = urlStr.indexOf('#');
-          if (hashIdx !== -1) {
-            const hash = urlStr.substring(hashIdx + 1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            if (accessToken && refreshToken) {
-              supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-              }).catch((e) => console.warn('Supabase setSession from deep link notice:', e));
+        if (urlStr.includes('#access_token') || urlStr.includes('?access_token') || urlStr.includes('code=') || urlStr.includes('error_description')) {
+          // Normalize URL for parsing
+          const normalizedUrl = urlStr.startsWith('buildnow://')
+            ? urlStr.replace('buildnow://', 'https://buildnow.app/')
+            : urlStr;
+
+          try {
+            const parsedObj = new URL(normalizedUrl);
+            const queryParams = parsedObj.searchParams;
+
+            // 1. Check for error description
+            const errorDesc = queryParams.get('error_description');
+            if (errorDesc) {
+              showToast(`Login failed: ${decodeURIComponent(errorDesc)}`, 'error');
+              navigate('/login');
+              return;
             }
+
+            const isPasswordRecovery =
+              urlStr.includes('reset-password') ||
+              queryParams.get('type') === 'recovery';
+
+            // 2. Check for PKCE Authorization Code (?code=...)
+            const authCode = queryParams.get('code');
+            if (authCode) {
+              supabase.auth.exchangeCodeForSession(authCode)
+                .then(({ data, error }) => {
+                  if (error) {
+                    console.warn('exchangeCodeForSession error:', error);
+                    showToast('Verification failed. Please try again.', 'error');
+                  } else if (data?.session) {
+                    if (isPasswordRecovery) {
+                      showToast('Please enter your new password.', 'success');
+                      navigate('/reset-password');
+                    } else {
+                      showToast('Welcome back! Successfully logged in.', 'success');
+                      navigate('/');
+                    }
+                  }
+                })
+                .catch((err) => console.warn('exchangeCode error:', err));
+              return;
+            }
+
+            // 3. Check for Implicit Grant hash fragments (#access_token=...&refresh_token=...)
+            const hashIdx = urlStr.indexOf('#');
+            if (hashIdx !== -1) {
+              const hash = urlStr.substring(hashIdx + 1);
+              const hashParams = new URLSearchParams(hash);
+              const accessToken = hashParams.get('access_token');
+              const refreshToken = hashParams.get('refresh_token');
+              const isRecoveryFromHash = isPasswordRecovery || hashParams.get('type') === 'recovery';
+              if (accessToken && refreshToken) {
+                supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken
+                })
+                  .then(({ data, error }) => {
+                    if (!error && data?.session) {
+                      if (isRecoveryFromHash) {
+                        showToast('Please enter your new password.', 'success');
+                        navigate('/reset-password');
+                      } else {
+                        showToast('Welcome back! Successfully logged in.', 'success');
+                        navigate('/');
+                      }
+                    }
+                  })
+                  .catch((e) => console.warn('Supabase setSession from deep link notice:', e));
+                return;
+              }
+            }
+          } catch (urlParseErr) {
+            console.warn('Error parsing auth deep link:', urlParseErr);
           }
-          navigate('/orders');
+          if (urlStr.includes('reset-password')) {
+            navigate('/reset-password');
+          } else {
+            navigate('/');
+          }
           return;
         }
 

@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     namespace = "com.girirajpower.buildnow"
-    compileSdk = rootProject.ext.compileSdkVersion
+    compileSdk = 36
     defaultConfig {
         applicationId "com.girirajpower.buildnow"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -21,6 +21,15 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force "androidx.core:core-ktx:1.15.0"
+        force "androidx.core:core:1.15.0"
+        force "androidx.activity:activity:1.9.3"
+        force "androidx.appcompat:appcompat:1.7.0"
     }
 }
 

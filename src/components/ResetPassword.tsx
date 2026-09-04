@@ -26,9 +26,33 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onOpenA
   useEffect(() => {
     let isMounted = true;
 
-    // Check existing session on mount
+    // Check existing session on mount (and parse any tokens/code in URL if present)
     const checkInitialSession = async () => {
       try {
+        // If arrived with hash fragments or search code directly
+        if (typeof window !== 'undefined') {
+          const hash = window.location.hash;
+          const search = window.location.search;
+
+          if (hash && hash.includes('access_token')) {
+            const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+            const accessToken = hashParams.get('access_token');
+            const refreshToken = hashParams.get('refresh_token');
+            if (accessToken && refreshToken) {
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+              }).catch(() => {});
+            }
+          } else if (search && search.includes('code=')) {
+            const searchParams = new URLSearchParams(search);
+            const authCode = searchParams.get('code');
+            if (authCode) {
+              await supabase.auth.exchangeCodeForSession(authCode).catch(() => {});
+            }
+          }
+        }
+
         const { data: { session } } = await supabase.auth.getSession();
         if (session && isMounted) {
           setIsValidSession(true);
@@ -50,12 +74,12 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onOpenA
       }
     });
 
-    // Timeout: if no valid recovery session is verified within 3 seconds, mark as invalid
+    // Timeout: if no valid recovery session is verified within 5 seconds, mark as invalid
     const timer = setTimeout(() => {
       if (isMounted && isCheckingSession) {
         setIsCheckingSession(false);
       }
-    }, 3000);
+    }, 5000);
 
     return () => {
       isMounted = false;

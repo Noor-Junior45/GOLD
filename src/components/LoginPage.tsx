@@ -10,6 +10,7 @@ import {
   LogIn,
   UserPlus
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabaseClient';
 import {
   saveUserProfile,
@@ -205,8 +206,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
     setIsLoading(true);
     try {
+      const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+      const redirectTo = isNative
+        ? 'buildnow://reset-password'
+        : `${window.location.origin}/reset-password`;
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo,
       });
 
       if (resetError) {
@@ -236,10 +242,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
     setIsMagicLoading(true);
     try {
+      const isNative = typeof window !== 'undefined' && Capacitor.isNativePlatform();
+      const redirectTo = isNative ? 'buildnow://login' : window.location.origin;
+
       const { error: magicError } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: redirectTo,
         },
       });
 
