@@ -1197,6 +1197,21 @@ async function startServer() {
   // Set trust proxy to trust Cloud Run and reverse proxy headers (X-Forwarded-For)
   app.set("trust proxy", 1);
 
+  // Universal CORS Middleware for Capacitor Native Android/iOS (https://localhost, capacitor://localhost) & Web Deployments
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-idempotency-key, if-none-match, Cache-Control, Pragma");
+    res.setHeader("Access-Control-Expose-Headers", "ETag, X-Cache, Content-Disposition");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    next();
+  });
+
   // 1. Enable Gzip/Deflate compression for fast mobile payload delivery
   app.use(
     compression({
@@ -1726,6 +1741,172 @@ async function startServer() {
     catalogCache = null;
     res.setHeader("Cache-Control", "no-store");
     res.json({ success: true, message: "Server in-memory catalog cache purged." });
+  });
+
+  // Get single product by ID
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const { products } = await getCachedCatalog();
+      const product = products.find((p) => String(p.id) === String(productId));
+      if (product) {
+        return res.json({ success: true, product });
+      }
+
+      const sb = getServerSupabase();
+      if (sb) {
+        const { data, error } = await sb.from("products").select("*").eq("id", productId).single();
+        if (!error && data) {
+          return res.json({ success: true, product: data });
+        }
+      }
+
+      return res.status(404).json({ success: false, message: `Product with ID '${productId}' not found.` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to retrieve product." });
+    }
+  });
+
+  // Create / Add a new product via backend (Bypasses client read-only RLS via Service Role)
+  app.post("/api/products", async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
+        return res.status(400).json({ success: false, message: "Product name is required." });
+      }
+
+      const price = Number(body.price ?? 0);
+      if (isNaN(price) || price < 0) {
+        return res.status(400).json({ success: false, message: "Valid positive price is required." });
+      }
+
+      const mrp = Number(body.mrp ?? body.originalPrice ?? body.original_price ?? (price > 0 ? price * 1.15 : 0));
+
+      // Handle image URLs (array or single string)
+      let imageUrls: string[] = [];
+      if (Array.isArray(body.image_urls) && body.image_urls.length > 0) {
+        imageUrls = body.image_urls.filter((u: any) => typeof u === "string" && u.trim().length > 0);
+      } else if (Array.isArray(body.images) && body.images.length > 0) {
+        imageUrls = body.images.filter((u: any) => typeof u === "string" && u.trim().length > 0);
+      } else if (typeof body.image_urls === "string" && body.image_urls.startsWith("http")) {
+        imageUrls = [body.image_urls];
+      } else if (typeof body.image === "string" && body.image.startsWith("http")) {
+        imageUrls = [body.image];
+      }
+
+      if (imageUrls.length === 0) {
+        imageUrls = ["https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop"];
+      }
+
+      // Handle specifications (object or JSON)
+      let specifications: Record<string, any> = {};
+      if (body.specifications && typeof body.specifications === "object") {
+        specifications = body.specifications;
+      } else if (body.specs && typeof body.specs === "object") {
+        specifications = body.specs;
+      } else if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {
+          specifications = { "Description": body.specifications };
+        }
+      }
+
+      const newProductRow: any = {
+        name: body.name.trim(),
+        brand: (body.brand && String(body.brand).trim()) || "Giriraj Genuine",
+        category: (body.category && String(body.category).trim()) || "Electrical",
+        subcategory: (body.subcategory || body.subCategory || body.sub_category || "General").trim(),
+        price,
+        mrp: mrp >= price ? mrp : price,
+        description: (body.description && String(body.description).trim()) || "High-grade certified material for residential and commercial projects.",
+        specifications,
+        stock_quantity: Math.max(0, Number(body.stock_quantity ?? body.stock_count ?? body.stock ?? 50)),
+        image_urls: imageUrls,
+        rating_avg: Number(body.rating_avg || body.rating || 4.8),
+        rating_count: Number(body.rating_count || body.reviewsCount || 12),
+        updated_at: new Date().toISOString()
+      };
+
+      if (body.id) {
+        newProductRow.id = String(body.id);
+      }
+
+      const sb = getServerSupabase();
+      let savedProduct: any = null;
+
+      if (sb) {
+        const { data, error } = await sb.from("products").upsert(newProductRow).select().single();
+        if (error) {
+          console.error("[Server Add Product] Supabase error:", error);
+          return res.status(500).json({ success: false, message: error.message, error });
+        }
+        savedProduct = data;
+      } else {
+        // Fallback when Supabase service is loading
+        newProductRow.id = newProductRow.id || `prod-${Date.now()}`;
+        newProductRow.created_at = new Date().toISOString();
+        savedProduct = newProductRow;
+      }
+
+      // Immediately purge server cache so all connected clients get the new product instantly
+      catalogCache = null;
+
+      console.log(`[Server] Product added successfully: ${savedProduct.name} (${savedProduct.id})`);
+      return res.status(201).json({
+        success: true,
+        message: "Product successfully added to catalog.",
+        product: savedProduct
+      });
+    } catch (err: any) {
+      console.error("[Server] Exception adding product:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Failed to create product." });
+    }
+  });
+
+  // Update existing product by ID
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const updates = req.body || {};
+      updates.updated_at = new Date().toISOString();
+
+      const sb = getServerSupabase();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: "Database connection not available." });
+      }
+
+      const { data, error } = await sb.from("products").update(updates).eq("id", productId).select().single();
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      catalogCache = null;
+      return res.json({ success: true, message: "Product updated successfully", product: data });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to update product." });
+    }
+  });
+
+  // Delete product by ID
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const sb = getServerSupabase();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: "Database connection not available." });
+      }
+
+      const { error } = await sb.from("products").delete().eq("id", productId);
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+
+      catalogCache = null;
+      return res.json({ success: true, message: `Product ${productId} deleted successfully` });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to delete product." });
+    }
   });
 
   // =========================================================================

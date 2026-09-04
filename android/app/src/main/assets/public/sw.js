@@ -1,8 +1,33 @@
-// BuildNow High-Performance Service Worker for Offline & Poor Network Resilience
-// Version: 2.1.0
+// BuildNow Service Worker
+// Version: 2.2.0
+
+const isDevOrPreviewHost =
+  self.location.hostname.includes('ais-dev') ||
+  self.location.hostname.includes('ais-pre') ||
+  self.location.hostname.includes('run.app') ||
+  self.location.hostname.includes('localhost') ||
+  self.location.hostname.includes('127.0.0.1');
+
+if (isDevOrPreviewHost) {
+  self.addEventListener('install', () => {
+    self.skipWaiting();
+  });
+
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      caches.keys().then((keys) => {
+        return Promise.all(keys.map((k) => caches.delete(k)));
+      }).then(() => {
+        return self.registration.unregister();
+      }).then(() => {
+        return self.clients.claim();
+      })
+    );
+  });
+}
 
 const CACHE_PREFIX = 'buildnow';
-const CACHE_VERSION = 'v2.1.0';
+const CACHE_VERSION = 'v2.2.0';
 
 const CACHES = {
   static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,
@@ -93,6 +118,10 @@ self.addEventListener('activate', (event) => {
 // 3. FETCH INTERCEPTION & STRATEGIES
 // ---------------------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
+  if (isDevOrPreviewHost) {
+    return;
+  }
+
   const request = event.request;
 
   // Rule 1: Only handle GET requests
@@ -102,10 +131,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Rule 2: NEVER cache or intercept real-time / dynamic server APIs, Auth, or Payment endpoints
+  // Rule 2: NEVER cache or intercept real-time / dynamic server APIs, Auth, Vite dev paths, or Payment endpoints
   if (
     url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/rest') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.hostname.includes('ais-dev') ||
     url.hostname.includes('supabase.co/auth') ||
     url.hostname.includes('supabase.co/rest') ||
     url.hostname.includes('identitytoolkit.googleapis.com') ||

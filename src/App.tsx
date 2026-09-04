@@ -24,6 +24,7 @@ import { TechniciansPage } from './components/technicians/TechniciansPage';
 import { TechnicianDetailPage } from './components/technicians/TechnicianDetailPage';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { InstallAppModal } from './components/InstallAppModal';
+import { AddProductModal } from './components/AddProductModal';
 import { SEOHead } from './components/SEOHead';
 import {
   trackPageView,
@@ -160,7 +161,15 @@ export default function App() {
   const [isDeviceLocationPromptOpen, setIsDeviceLocationPromptOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
+
+  // Listen for open-add-product global custom event
+  useEffect(() => {
+    const handleOpenAddProduct = () => setIsAddProductOpen(true);
+    window.addEventListener('open-add-product', handleOpenAddProduct);
+    return () => window.removeEventListener('open-add-product', handleOpenAddProduct);
+  }, []);
   const [orders, setOrders] = useState<Order[]>([]);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(() => getStoredAddresses());
 
@@ -564,6 +573,58 @@ export default function App() {
       listenerPromise.then((handle) => handle.remove()).catch(() => {});
     };
   }, [navigate]);
+
+  // Android hardware back button handler for native platform
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backListenerPromise = CapApp.addListener('backButton', () => {
+      if (isAddProductOpen) {
+        setIsAddProductOpen(false);
+        return;
+      }
+      if (selectedProductQuickView) {
+        setSelectedProductQuickView(null);
+        return;
+      }
+      if (isLocationModalOpen) {
+        setIsLocationModalOpen(false);
+        return;
+      }
+      if (isDeviceLocationPromptOpen) {
+        setIsDeviceLocationPromptOpen(false);
+        return;
+      }
+      if (isAiAssistantOpen) {
+        setIsAiAssistantOpen(false);
+        return;
+      }
+      if (isInstallModalOpen) {
+        setIsInstallModalOpen(false);
+        return;
+      }
+
+      // If user is not at home root, navigate back
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/' && currentPath !== '') {
+        navigate(-1);
+      } else {
+        CapApp.exitApp();
+      }
+    });
+
+    return () => {
+      backListenerPromise.then((handle) => handle.remove()).catch(() => {});
+    };
+  }, [
+    isAddProductOpen,
+    selectedProductQuickView,
+    isLocationModalOpen,
+    isDeviceLocationPromptOpen,
+    isAiAssistantOpen,
+    isInstallModalOpen,
+    navigate,
+  ]);
 
   // Initialize @capacitor/push-notifications for real-time order status updates & alerts
   useEffect(() => {
@@ -1132,6 +1193,7 @@ export default function App() {
                   setUserName('');
                   navigate('/');
                 }}
+                onOpenAddProduct={() => setIsAddProductOpen(true)}
               />
             }
           />
@@ -1310,6 +1372,22 @@ export default function App() {
         isOpen={isAiAssistantOpen}
         onClose={() => setIsAiAssistantOpen(false)}
         currentArea={currentArea}
+      />
+
+      <AddProductModal
+        isOpen={isAddProductOpen}
+        onClose={() => setIsAddProductOpen(false)}
+        onProductAdded={(newProduct) => {
+          showToast(`Product "${newProduct.name || 'Item'}" published successfully!`);
+          // Trigger catalog refresh
+          fetchProductsFromSupabase()
+            .then((fresh) => {
+              if (Array.isArray(fresh) && fresh.length > 0) {
+                setProducts(fresh);
+              }
+            })
+            .catch(() => {});
+        }}
       />
 
     </div>

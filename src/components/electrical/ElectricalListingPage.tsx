@@ -19,7 +19,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
 import { ProductCardImage } from '../ProductCardImage';
 import { hapticLight, hapticSelection } from '../../utils/haptics';
-import { motion } from 'motion/react';
+import { getFlattenedSpecifications } from '../../utils/productSpecifications';
 
 interface ElectricalListingPageProps {
   onAddToCart: (product: Product) => void;
@@ -297,7 +297,10 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
     inStock: ep.stock_quantity > 0,
     stockCount: ep.stock_quantity,
     isEmergency: false,
-    specs: typeof ep.specifications === 'object' && ep.specifications !== null ? ep.specifications : {},
+    specs: getFlattenedSpecifications(ep.specifications, ep.brand).reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>),
     description: ep.description,
     tags: [ep.brand, ep.subcategory, 'Electrical']
   });
@@ -431,15 +434,8 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop';
 
               return (
-                <motion.div
+                <div
                   key={product.id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{
-                    duration: 0.32,
-                    ease: [0.25, 0.1, 0.25, 1],
-                    delay: Math.min(index * 0.035, 0.35),
-                  }}
                   className="group flex flex-col justify-between transition-all duration-200 border-0 p-1"
                 >
                   {/* Clean Product Image with Floating Discount Tag */}
@@ -560,7 +556,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>

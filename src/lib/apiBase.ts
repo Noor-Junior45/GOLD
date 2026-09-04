@@ -8,15 +8,38 @@ import { Capacitor } from '@capacitor/core';
  * This resolves to the live backend server (https://www.girirajpower.in) or VITE_API_BASE_URL,
  * while preserving standard relative paths in web browsers.
  */
-export const API_BASE_URL: string =
-  (import.meta.env.VITE_API_BASE_URL as string) ||
-  (typeof window !== 'undefined' &&
-  (Capacitor.isNativePlatform() ||
-    window.location.origin.startsWith('capacitor://') ||
-    window.location.origin.startsWith('ionic://') ||
-    window.location.origin.startsWith('file://'))
-    ? 'https://www.girirajpower.in'
-    : '');
+export const API_BASE_URL: string = (() => {
+  // 1. Prioritize explicit environment variable if set
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return String(import.meta.env.VITE_API_BASE_URL).replace(/\/+$/, '');
+  }
+
+  if (typeof window === 'undefined') return '';
+
+  const origin = window.location.origin || '';
+  const hostname = window.location.hostname || '';
+  const port = window.location.port || '';
+
+  // 2. Comprehensive check for Native Android & iOS Capacitor runtime
+  const isCapacitorNative =
+    Capacitor.isNativePlatform() ||
+    Capacitor.getPlatform() === 'android' ||
+    Capacitor.getPlatform() === 'ios' ||
+    (typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.()) ||
+    origin.startsWith('capacitor://') ||
+    origin.startsWith('ionic://') ||
+    origin.startsWith('file://') ||
+    // On Android Capacitor with androidScheme: 'https', origin is strictly https://localhost without port
+    (origin === 'https://localhost' && (!port || port === '443')) ||
+    // Common emulator loopback addresses when testing on Android
+    hostname === '10.0.2.2';
+
+  if (isCapacitorNative) {
+    return 'https://www.girirajpower.in';
+  }
+
+  return '';
+})();
 
 /**
  * Helper to safely construct full API URLs across Web and Capacitor platforms.

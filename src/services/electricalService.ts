@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { ElectricalProduct, ProductReview, FilterState, SortOption } from '../types/electrical';
 import { INITIAL_PRODUCTS } from '../data/products';
+import { apiUrl } from '../lib/apiBase';
 
 /**
  * Transforms Supabase products to standard ElectricalProduct format
@@ -96,17 +97,49 @@ export async function fetchElectricalProducts(
   searchQuery: string = ''
 ): Promise<{ products: ElectricalProduct[]; total: number }> {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('id', { ascending: true });
+    let rawData: any[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        rawData = data;
+      }
+    } catch (sbErr) {
+      console.warn('[electricalService] Supabase direct query notice:', sbErr);
+    }
+
+    // If direct Supabase query was empty or failed (e.g. RLS / native CORS), query backend API
+    if (rawData.length === 0) {
+      try {
+        const res = await fetch(apiUrl('/api/products'), {
+          headers: { 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && Array.isArray(json.products) && json.products.length > 0) {
+            rawData = json.products;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[electricalService] Backend API fallback notice:', apiErr);
+      }
+    }
+
+    // Safe fallback if offline or backend cold start
+    if (rawData.length === 0 && Array.isArray(INITIAL_PRODUCTS) && INITIAL_PRODUCTS.length > 0) {
+      rawData = INITIAL_PRODUCTS;
+    }
 
     let productsList: ElectricalProduct[] = [];
 
-    if (!error && data && data.length > 0) {
+    if (rawData.length > 0) {
       // Exclude only heavy structural raw construction materials (e.g. bulk cement bags, raw TMT rebar, sand, red bricks)
       // All other products (wires, conduits, dalda pipes, switches, lights, fans, MCBs, CCTV, tools, etc.) are included!
-      productsList = data
+      productsList = rawData
         .filter((row) => {
           const cat = (row.category || '').toLowerCase().trim();
           const sub = (row.subcategory || row.sub_category || '').toLowerCase().trim();
@@ -129,7 +162,6 @@ export async function fetchElectricalProducts(
         })
         .map(transformToElectricalProduct);
     } else {
-      // Return empty list if no products in database - never inject demo products
       productsList = [];
     }
 
@@ -474,4 +506,48 @@ export async function fetchProductFaqs(productId: string, productFallback?: Elec
     }
   ];
 }
+
+/**
+ * Adds a new product to the catalog via the backend server API
+ * (Bypasses Supabase client read-only RLS via backend Service Role)
+ */
+export async function addProductToBackend(productData: any): Promise<{ success: boolean; message: string; product?: any }> {
+  try {
+    const res = await fetch(apiUrl('/api/products'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(productData),
+    });
+
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    console.error('Error in addProductToBackend:', err);
+    return {
+      success: false,
+      message: err?.message || 'Failed to connect to backend server. Please verify network connection.',
+    };
+  }
+}
+
+/**
+ * Deletes a product from the catalog via the backend server API
+ */
+export async function deleteProductFromBackend(productId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(apiUrl(`/api/products/${productId}`), {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Failed to connect to backend server.',
+    };
+  }
+}
+
 

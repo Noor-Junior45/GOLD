@@ -47,6 +47,7 @@ import { SEOHead } from '../SEOHead';
 import { shareProductDetails } from '../../utils/shareProduct';
 import { ZoomableImage } from '../ZoomableImage';
 import { useEdgeSwipeBack } from '../../hooks/useEdgeSwipeBack';
+import { formatProductSpecifications, getFlattenedSpecifications } from '../../utils/productSpecifications';
 
 interface ProductDetailPageProps {
   onAddToCart: (product: Product) => void;
@@ -98,6 +99,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   // Specifications Accordion State
   const [isSpecsExpanded, setIsSpecsExpanded] = useState(true);
+
+  // Normalized Specifications (Handles Supabase JSON, {key, value} pairs, numeric indices, nested groups)
+  const specGroups = useMemo(() => {
+    if (!product) return [];
+    return formatProductSpecifications(product.specifications, product.brand);
+  }, [product?.specifications, product?.brand]);
 
   // Review Form State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -228,7 +235,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     inStock: ep.stock_quantity > 0,
     stockCount: ep.stock_quantity,
     isEmergency: false,
-    specs: typeof ep.specifications?.Specifications === 'object' ? ep.specifications.Specifications : {},
+    specs: getFlattenedSpecifications(ep.specifications, ep.brand).reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>),
     description: ep.description,
     tags: [ep.brand, ep.subcategory, isPipe ? 'Pipes' : 'Electrical'],
     selectedColor: hasColorOptions ? selectedWireColor : undefined
@@ -981,9 +991,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             )}
 
-            {/* Specifications Table - Renders Real Supabase Attributes without dummy 'Details' label */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            {/* Specifications Table - Renders Clean Key - Value Pairs */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
               <button
+                type="button"
                 onClick={() => setIsSpecsExpanded(!isSpecsExpanded)}
                 className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between font-black text-sm text-slate-900 cursor-pointer transition-colors"
               >
@@ -992,42 +1003,34 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </button>
 
               {isSpecsExpanded && (
-                <div className="p-4 sm:p-6 text-xs divide-y divide-slate-100">
-                  {Object.entries(product.specifications || {}).length > 0 ? (
-                    Object.entries(product.specifications).map(([key, val]) => {
-                      if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                        return (
-                          <div key={key} className="py-3 first:pt-0 last:pb-0 space-y-2">
-                            <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider">
-                              {key}
-                            </h4>
-                            <div className="space-y-1.5 pl-1">
-                              {Object.entries(val).map(([subKey, subVal]) => (
-                                <div key={subKey} className="grid grid-cols-12 gap-3 py-1 border-b border-slate-50">
-                                  <span className="col-span-5 sm:col-span-4 text-slate-500 font-semibold">
-                                    {subKey}
-                                  </span>
-                                  <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold">
-                                    {String(subVal)}
-                                  </span>
-                                </div>
-                              ))}
+                <div className="p-4 sm:p-6 text-xs space-y-4">
+                  {specGroups.length > 0 ? (
+                    specGroups.map((group, gIdx) => (
+                      <div key={group.groupName || gIdx} className="space-y-2">
+                        {group.groupName && (
+                          <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider pb-1 border-b border-slate-100">
+                            {group.groupName}
+                          </h4>
+                        )}
+                        <div className="rounded-xl border border-slate-200/80 overflow-hidden divide-y divide-slate-100">
+                          {group.items.map((item, iIdx) => (
+                            <div
+                              key={item.key + iIdx}
+                              className={`grid grid-cols-12 gap-3 p-3 sm:px-4 sm:py-2.5 items-center transition-colors ${
+                                iIdx % 2 === 0 ? 'bg-slate-50/70' : 'bg-white'
+                              }`}
+                            >
+                              <span className="col-span-5 sm:col-span-4 text-slate-600 font-semibold text-xs">
+                                {item.key}
+                              </span>
+                              <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold text-xs text-right sm:text-left break-words">
+                                {item.value}
+                              </span>
                             </div>
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <div key={key} className="grid grid-cols-12 gap-3 py-2.5 first:pt-0 last:pb-0">
-                            <span className="col-span-5 sm:col-span-4 text-slate-500 font-semibold">
-                              {key}
-                            </span>
-                            <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold">
-                              {Array.isArray(val) ? val.join(', ') : String(val)}
-                            </span>
-                          </div>
-                        );
-                      }
-                    })
+                          ))}
+                        </div>
+                      </div>
+                    ))
                   ) : (
                     <div className="text-slate-500 italic py-2">
                       Standard certified specifications as per manufacturer datasheet.

@@ -7,6 +7,18 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     cleartext: true,
+    allowNavigation: [
+      'www.girirajpower.in',
+      'girirajpower.in',
+      '*.run.app',
+      '*.supabase.co',
+      '*.googleapis.com',
+      '*.gstatic.com',
+      '*.googletagmanager.com',
+      'unpkg.com',
+      'images.unsplash.com',
+      'i.imgur.com'
+    ],
   },
   plugins: {
     App: {

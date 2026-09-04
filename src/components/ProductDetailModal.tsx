@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Star, Check, Plus, Minus, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2, MapPin, AlertCircle } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
@@ -14,6 +14,7 @@ import { hapticLight, hapticMedium } from '../utils/haptics';
 import { shareProductDetails } from '../utils/shareProduct';
 import { ZoomableImage } from './ZoomableImage';
 import { useBottomSheetDismiss } from '../hooks/useBottomSheetDismiss';
+import { getFlattenedSpecifications } from '../utils/productSpecifications';
 
 import { ProductReviewsSection } from './ProductReviewsSection';
 
@@ -48,6 +49,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const [pincode, setPincode] = useState('700091');
   const [pincodeChecked, setPincodeChecked] = useState(true);
+
+  const formattedSpecs = useMemo(() => {
+    if (!product) return [];
+    const raw = (product as any).specifications || product.specs;
+    return getFlattenedSpecifications(raw, product.brand);
+  }, [product?.specs, (product as any)?.specifications, product?.brand]);
 
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
@@ -434,24 +441,26 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </p>
 
               {/* Specifications Table */}
-              <div className="mb-5">
-                <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
-                  Technical Specifications:
+              {formattedSpecs.length > 0 && (
+                <div className="mb-5">
+                  <div className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">
+                    Product Specifications:
+                  </div>
+                  <div className="rounded-xl border border-slate-200 overflow-hidden text-xs divide-y divide-slate-100">
+                    {formattedSpecs.map((item, idx) => (
+                      <div
+                        key={item.key + idx}
+                        className={`flex items-center justify-between gap-3 p-2.5 sm:px-3.5 ${
+                          idx % 2 === 0 ? 'bg-slate-50/70' : 'bg-white'
+                        }`}
+                      >
+                        <span className="font-semibold text-slate-600 text-xs shrink-0">{item.key}</span>
+                        <span className="font-bold text-slate-900 text-xs text-right break-words">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-slate-200 overflow-hidden text-xs">
-                  {Object.entries(product.specs).map(([key, value], idx) => (
-                    <div
-                      key={key}
-                      className={`flex justify-between p-2.5 ${
-                        idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'
-                      }`}
-                    >
-                      <span className="font-semibold text-slate-600">{key}</span>
-                      <span className="font-bold text-slate-900 text-right">{value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* Delivery & Pincode Checker */}
               <div className="p-3.5 rounded-xl border border-slate-200 bg-white mb-5 space-y-2.5">

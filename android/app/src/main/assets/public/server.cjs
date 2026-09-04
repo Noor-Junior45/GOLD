@@ -405,6 +405,154 @@ function generateTestEmailHtml(customerName) {
 </html>
   `;
 }
+function generateLoginAlertEmailHtml(params) {
+  const name = params.customerName || "Valued Customer";
+  const time = params.loginTime || (/* @__PURE__ */ new Date()).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + " (IST)";
+  const location = params.location || "Kolkata, West Bengal, India";
+  const ip = params.ipAddress || "Protected / Encrypted";
+  const device = params.device || "Android Smartphone";
+  const os = params.os || "Android";
+  const browser = params.browser || "BuildNow App";
+  const method = params.loginMethod || "Email & Password";
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Alert: New Sign-in to your BuildNow Account</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0b1120; margin: 0; padding: 24px; color: #1e293b;">
+  <div style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5); border: 1px solid #e2e8f0;">
+    
+    <!-- Top Security Banner -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 28px 24px 22px 24px; text-align: center; border-bottom: 3px solid #facc15;">
+      <div style="display: inline-flex; align-items: center; justify-content: center; background-color: rgba(250, 204, 21, 0.15); border: 1px solid #facc15; color: #fef08a; font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;">
+        \u{1F6E1}\uFE0F ACCOUNT SECURITY ALERT
+      </div>
+      <h1 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 6px 0; letter-spacing: -0.3px;">
+        New Login Detected
+      </h1>
+      <p style="color: #94a3b8; font-size: 13px; margin: 0; font-weight: 500;">
+        BuildNow &amp; Giriraj Power Security Center
+      </p>
+    </div>
+
+    <!-- Main Content Area -->
+    <div style="padding: 28px 24px 24px 24px;">
+      <p style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 16px 0;">
+        Hello <strong style="color: #0f172a;">${name}</strong>,
+      </p>
+      <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 22px 0;">
+        We detected a successful sign-in to your <strong>BuildNow</strong> account (<span style="color: #2563eb; font-weight: 600;">${params.email}</span>). Please review the details below:
+      </p>
+
+      <!-- Activity Details Card (Binance / Uber style) -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 24px;">
+        <div style="background-color: #f1f5f9; padding: 12px 18px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #475569;">
+          \u{1F4CB} Sign-in Activity Summary
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.5;">
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600; width: 38%;">\u{1F552} Date &amp; Time</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${time}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7; background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">\u{1F4CD} Location</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">
+              <span style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                ${location}
+              </span>
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">\u{1F4F1} Device &amp; OS</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${device} (${os})</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7; background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">\u{1F310} Browser / Client</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">${browser}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">\u{1F511} Login Method</td>
+            <td style="padding: 12px 18px; color: #0f172a; font-weight: 700;">
+              <span style="display: inline-block; background-color: #fef08a; color: #854d0e; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                ${method}
+              </span>
+            </td>
+          </tr>
+          <tr style="background-color: #ffffff;">
+            <td style="padding: 12px 18px; color: #64748b; font-weight: 600;">\u{1F522} IP Address</td>
+            <td style="padding: 12px 18px; color: #475569; font-family: monospace; font-size: 12px; font-weight: 600;">${ip}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Was this you? verification status block -->
+      <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start;">
+          <div style="font-size: 18px; margin-right: 10px; line-height: 1;">\u2705</div>
+          <div>
+            <strong style="color: #065f46; font-size: 13px; display: block; margin-bottom: 2px;">Was this you?</strong>
+            <span style="color: #047857; font-size: 12px; line-height: 1.4; display: block;">
+              If you just logged into BuildNow, you can safely ignore this email. No further action is required.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Warning & Action CTAs -->
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 18px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+          <div style="font-size: 18px; margin-right: 10px; line-height: 1;">\u26A0\uFE0F</div>
+          <div>
+            <strong style="color: #991b1b; font-size: 13px; display: block; margin-bottom: 2px;">Don't recognize this login?</strong>
+            <span style="color: #b91c1c; font-size: 12px; line-height: 1.4; display: block;">
+              If you did not perform this login, someone else may have gained unauthorized access to your account.
+            </span>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 14px;">
+          <a href="https://www.girirajpower.in/login" style="display: inline-block; background-color: #dc2626; color: #ffffff; text-decoration: none; font-weight: 800; font-size: 13px; padding: 10px 22px; border-radius: 8px; margin: 4px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
+            \u{1F512} Secure Account &amp; Reset Password
+          </a>
+          <a href="tel:+918777400280" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 18px; border-radius: 8px; margin: 4px;">
+            \u{1F4DE} Security Helpline (+91 87774 00280)
+          </a>
+        </div>
+      </div>
+
+      <!-- Security Best Practices -->
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #64748b; line-height: 1.5;">
+        <strong style="color: #334155; font-size: 12px;">\u{1F6E1}\uFE0F Security Tips from Giriraj Power:</strong>
+        <ul style="margin: 6px 0 0 0; padding-left: 18px;">
+          <li>Never share your passwords, OTP codes, or magic links with anyone.</li>
+          <li>Giriraj Power / BuildNow staff will <strong>never</strong> call or email you asking for your password.</li>
+          <li>Always verify you are visiting <code>https://www.girirajpower.in</code> before entering your details.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #0f172a; color: #94a3b8; padding: 20px 24px; text-align: center; font-size: 11px; line-height: 1.5; border-top: 1px solid #334155;">
+      <p style="margin: 0 0 6px 0; color: #f1f5f9; font-weight: 700;">
+        BuildNow by Giriraj Power \u2014 kasba Central Dispatch Hub
+      </p>
+      <p style="margin: 0 0 8px 0;">
+        Kasba, Kolkata 700039, West Bengal | Support Email: team@girirajpower.in
+      </p>
+      <p style="margin: 0; color: #64748b; font-size: 10px;">
+        This automated security notification was sent to ${params.email} in accordance with our account protection protocol.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
+  `;
+}
 var RESEND_INBOUND_DOMAIN = "oieldiakir.resend.app";
 var RESEND_INBOUND_EMAIL = process.env.RESEND_INBOUND_EMAIL || "orders@oieldiakir.resend.app";
 var OFFICIAL_EMAIL = process.env.RESEND_INBOUND_EMAIL || "orders@oieldiakir.resend.app";
@@ -629,6 +777,28 @@ function writeSavedAddressesFile(addresses) {
     console.warn("[Server Write Saved Addresses Notice]:", err);
   }
 }
+var TECHNICIAN_REVIEWS_FILE = import_path.default.join(DATA_DIR, "technician_reviews.json");
+function loadTechnicianReviewsFile() {
+  try {
+    ensureDataDir();
+    if (import_fs.default.existsSync(TECHNICIAN_REVIEWS_FILE)) {
+      const raw = import_fs.default.readFileSync(TECHNICIAN_REVIEWS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("[Server Read Technician Reviews Notice]:", err);
+  }
+  return [];
+}
+function writeTechnicianReviewsFile(reviews) {
+  try {
+    ensureDataDir();
+    import_fs.default.writeFileSync(TECHNICIAN_REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[Server Write Technician Reviews Notice]:", err);
+  }
+}
 var serverSupabaseClient = null;
 function getServerSupabase() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -840,6 +1010,18 @@ async function startServer() {
   const app = (0, import_express.default)();
   const PORT = 3e3;
   app.set("trust proxy", 1);
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key, x-idempotency-key, if-none-match, Cache-Control, Pragma");
+    res.setHeader("Access-Control-Expose-Headers", "ETag, X-Cache, Content-Disposition");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    next();
+  });
   app.use(
     (0, import_compression.default)({
       filter: (req, res) => {
@@ -858,6 +1040,27 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.json({ status: "ok", app: "Giriraj Power Kolkata Express" });
+  });
+  app.get("/.well-known/assetlinks.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    const assetlinksPath = import_path.default.join(process.cwd(), "public", ".well-known", "assetlinks.json");
+    if (import_fs.default.existsSync(assetlinksPath)) {
+      res.sendFile(assetlinksPath);
+    } else {
+      res.json([
+        {
+          relation: ["delegate_permission/common.handle_all_urls"],
+          target: {
+            namespace: "android_app",
+            package_name: "com.girirajpower.buildnow",
+            sha256_cert_fingerprints: [
+              "14:6D:E9:7D:0C:6D:77:E5:EE:DE:28:B6:F0:4B:92:47:FD:B3:36:CF:BE:0C:F0:7C:1E:58:E6:C3:FF:11:EB:7B"
+            ]
+          }
+        }
+      ]);
+    }
   });
   const SERVER_BOOT_TIME = (/* @__PURE__ */ new Date()).toISOString();
   function getActiveVersionInfo() {
@@ -914,6 +1117,175 @@ async function startServer() {
     res.setHeader("Surrogate-Control", "no-store");
     const versionInfo = getActiveVersionInfo();
     res.json(versionInfo);
+  });
+  app.get("/api/maps/mappls/autocomplete", async (req, res) => {
+    try {
+      const query = (req.query.input || "").trim();
+      if (!query) {
+        return res.json({ success: true, results: [] });
+      }
+      const mapplsKey = (process.env.MAPPLS_MAP_KEY || process.env.VITE_MAPPLS_MAP_KEY || "").trim();
+      if (!mapplsKey || mapplsKey === "YOUR_MAPPLS_MAP_KEY" || mapplsKey === "YOUR_STATIC_KEY") {
+        return res.status(400).json({ success: false, message: "Mappls static map key is not configured on server" });
+      }
+      const lat = req.query.lat ? parseFloat(req.query.lat) : 22.5726;
+      const lng = req.query.lng ? parseFloat(req.query.lng) : 88.3639;
+      try {
+        const mapplsUrl = `https://apis.mappls.com/advancedmaps/v1/${encodeURIComponent(mapplsKey)}/geo_code?addr=${encodeURIComponent(query)}&bias=1&bound=22.35,88.10;22.75,88.58`;
+        const mapplsRes = await fetch(mapplsUrl, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "BuildNowKolkata/2.4"
+          }
+        });
+        if (mapplsRes.ok) {
+          const data = await mapplsRes.json();
+          const items = data.copResults || data.results || [];
+          if (Array.isArray(items) && items.length > 0) {
+            const results = items.map((item, idx) => {
+              const name = item.formatted_address?.split(",")[0] || item.poi || item.street || query;
+              const secondary = item.formatted_address || `${item.subLocality || item.locality || "Kolkata"}, West Bengal`;
+              return {
+                id: `mappls-${idx}-${item.eLoc || item.place_id || Math.random().toString(36).substring(2, 7)}`,
+                name: name.trim(),
+                secondaryText: secondary.trim(),
+                lat: parseFloat(item.lat || item.latitude || lat),
+                lng: parseFloat(item.lng || item.longitude || lng),
+                pincode: item.pincode || item.pin || "",
+                placeId: item.eLoc || item.place_id || void 0,
+                source: "mappls"
+              };
+            });
+            return res.json({ success: true, source: "mappls", results });
+          }
+        }
+      } catch (mErr) {
+        console.warn("[Mappls Autocomplete Notice]:", mErr);
+      }
+      return res.json({ success: false, message: "Mappls search returned no results" });
+    } catch (err) {
+      console.error("[Mappls Autocomplete Error]:", err);
+      return res.status(500).json({ success: false, message: "Mappls search request failed" });
+    }
+  });
+  app.get("/api/maps/mappls/rev-geocode", async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ success: false, message: "Invalid latitude/longitude" });
+      }
+      const mapplsKey = (process.env.MAPPLS_MAP_KEY || process.env.VITE_MAPPLS_MAP_KEY || "").trim();
+      if (!mapplsKey || mapplsKey === "YOUR_MAPPLS_MAP_KEY" || mapplsKey === "YOUR_STATIC_KEY") {
+        return res.status(400).json({ success: false, message: "Mappls static map key is not configured" });
+      }
+      const mapplsUrl = `https://apis.mappls.com/advancedmaps/v1/${encodeURIComponent(mapplsKey)}/rev_geocode?lat=${lat}&lng=${lng}`;
+      const mapplsRes = await fetch(mapplsUrl, {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "BuildNowKolkata/2.4"
+        }
+      });
+      if (mapplsRes.ok) {
+        const data = await mapplsRes.json();
+        const results = data.results || data.copResults || [];
+        const first = Array.isArray(results) ? results[0] : results;
+        if (first) {
+          const street = first.street || first.houseNumber || first.poi || first.formatted_address?.split(",")[0] || "Kolkata";
+          const locality = first.subLocality || first.locality || first.subDistrict || "Kolkata";
+          const city = first.city || first.district || "Kolkata";
+          const state = first.state || "West Bengal";
+          const pincode = first.pincode || first.pin || "700001";
+          const formatted = first.formatted_address || `${street}, ${locality}, ${city} ${pincode}`;
+          return res.json({
+            success: true,
+            source: "mappls",
+            result: {
+              formattedAddress: formatted,
+              street,
+              locality,
+              suburb: first.subLocality || locality,
+              city,
+              state,
+              pincode,
+              lat,
+              lng
+            }
+          });
+        }
+      }
+      return res.status(404).json({ success: false, message: "No reverse geocoding result from Mappls" });
+    } catch (err) {
+      console.error("[Mappls Reverse Geocoding Error]:", err);
+      return res.status(500).json({ success: false, message: "Mappls reverse geocoding request failed" });
+    }
+  });
+  app.get("/api/maps/google/rev-geocode", async (req, res) => {
+    try {
+      const lat = parseFloat(req.query.lat);
+      const lng = parseFloat(req.query.lng);
+      if (isNaN(lat) || isNaN(lng)) {
+        return res.status(400).json({ success: false, message: "Invalid latitude/longitude" });
+      }
+      const apiKey = (process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "").trim();
+      if (apiKey && apiKey !== "YOUR_API_KEY") {
+        try {
+          const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`;
+          const gRes = await fetch(googleUrl);
+          if (gRes.ok) {
+            const data = await gRes.json();
+            if (data.status === "OK" && Array.isArray(data.results) && data.results.length > 0) {
+              const first = data.results[0];
+              let street = "";
+              let locality = "";
+              let city = "Kolkata";
+              let state = "West Bengal";
+              let pincode = "";
+              if (Array.isArray(first.address_components)) {
+                for (const comp of first.address_components) {
+                  if (comp.types.includes("route") || comp.types.includes("street_address")) {
+                    street = comp.long_name;
+                  }
+                  if (comp.types.includes("sublocality") || comp.types.includes("neighborhood")) {
+                    locality = comp.long_name;
+                  }
+                  if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
+                    city = comp.long_name;
+                  }
+                  if (comp.types.includes("administrative_area_level_1")) {
+                    state = comp.long_name;
+                  }
+                  if (comp.types.includes("postal_code")) {
+                    pincode = comp.long_name;
+                  }
+                }
+              }
+              const resolvedStreet = street || first.formatted_address?.split(",")[0] || locality || "Kolkata";
+              return res.json({
+                success: true,
+                source: "google-maps",
+                result: {
+                  formattedAddress: first.formatted_address,
+                  street: resolvedStreet,
+                  locality: locality || city,
+                  suburb: locality,
+                  city,
+                  state,
+                  pincode: pincode || "700001",
+                  lat,
+                  lng
+                }
+              });
+            }
+          }
+        } catch (gErr) {
+          console.warn("[Google Rev Geocode Notice]:", gErr);
+        }
+      }
+      return res.status(404).json({ success: false, message: "Google reverse geocoding unavailable" });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: "Google reverse geocode error" });
+    }
   });
   app.get("/api/maps/places-autocomplete", async (req, res) => {
     try {
@@ -1089,6 +1461,142 @@ async function startServer() {
     res.setHeader("Cache-Control", "no-store");
     res.json({ success: true, message: "Server in-memory catalog cache purged." });
   });
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const { products } = await getCachedCatalog();
+      const product = products.find((p) => String(p.id) === String(productId));
+      if (product) {
+        return res.json({ success: true, product });
+      }
+      const sb = getServerSupabase();
+      if (sb) {
+        const { data, error } = await sb.from("products").select("*").eq("id", productId).single();
+        if (!error && data) {
+          return res.json({ success: true, product: data });
+        }
+      }
+      return res.status(404).json({ success: false, message: `Product with ID '${productId}' not found.` });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to retrieve product." });
+    }
+  });
+  app.post("/api/products", async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
+        return res.status(400).json({ success: false, message: "Product name is required." });
+      }
+      const price = Number(body.price ?? 0);
+      if (isNaN(price) || price < 0) {
+        return res.status(400).json({ success: false, message: "Valid positive price is required." });
+      }
+      const mrp = Number(body.mrp ?? body.originalPrice ?? body.original_price ?? (price > 0 ? price * 1.15 : 0));
+      let imageUrls = [];
+      if (Array.isArray(body.image_urls) && body.image_urls.length > 0) {
+        imageUrls = body.image_urls.filter((u) => typeof u === "string" && u.trim().length > 0);
+      } else if (Array.isArray(body.images) && body.images.length > 0) {
+        imageUrls = body.images.filter((u) => typeof u === "string" && u.trim().length > 0);
+      } else if (typeof body.image_urls === "string" && body.image_urls.startsWith("http")) {
+        imageUrls = [body.image_urls];
+      } else if (typeof body.image === "string" && body.image.startsWith("http")) {
+        imageUrls = [body.image];
+      }
+      if (imageUrls.length === 0) {
+        imageUrls = ["https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop"];
+      }
+      let specifications = {};
+      if (body.specifications && typeof body.specifications === "object") {
+        specifications = body.specifications;
+      } else if (body.specs && typeof body.specs === "object") {
+        specifications = body.specs;
+      } else if (typeof body.specifications === "string") {
+        try {
+          specifications = JSON.parse(body.specifications);
+        } catch {
+          specifications = { "Description": body.specifications };
+        }
+      }
+      const newProductRow = {
+        name: body.name.trim(),
+        brand: body.brand && String(body.brand).trim() || "Giriraj Genuine",
+        category: body.category && String(body.category).trim() || "Electrical",
+        subcategory: (body.subcategory || body.subCategory || body.sub_category || "General").trim(),
+        price,
+        mrp: mrp >= price ? mrp : price,
+        description: body.description && String(body.description).trim() || "High-grade certified material for residential and commercial projects.",
+        specifications,
+        stock_quantity: Math.max(0, Number(body.stock_quantity ?? body.stock_count ?? body.stock ?? 50)),
+        image_urls: imageUrls,
+        rating_avg: Number(body.rating_avg || body.rating || 4.8),
+        rating_count: Number(body.rating_count || body.reviewsCount || 12),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (body.id) {
+        newProductRow.id = String(body.id);
+      }
+      const sb = getServerSupabase();
+      let savedProduct = null;
+      if (sb) {
+        const { data, error } = await sb.from("products").upsert(newProductRow).select().single();
+        if (error) {
+          console.error("[Server Add Product] Supabase error:", error);
+          return res.status(500).json({ success: false, message: error.message, error });
+        }
+        savedProduct = data;
+      } else {
+        newProductRow.id = newProductRow.id || `prod-${Date.now()}`;
+        newProductRow.created_at = (/* @__PURE__ */ new Date()).toISOString();
+        savedProduct = newProductRow;
+      }
+      catalogCache = null;
+      console.log(`[Server] Product added successfully: ${savedProduct.name} (${savedProduct.id})`);
+      return res.status(201).json({
+        success: true,
+        message: "Product successfully added to catalog.",
+        product: savedProduct
+      });
+    } catch (err) {
+      console.error("[Server] Exception adding product:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Failed to create product." });
+    }
+  });
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const updates = req.body || {};
+      updates.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      const sb = getServerSupabase();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: "Database connection not available." });
+      }
+      const { data, error } = await sb.from("products").update(updates).eq("id", productId).select().single();
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+      catalogCache = null;
+      return res.json({ success: true, message: "Product updated successfully", product: data });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to update product." });
+    }
+  });
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      const productId = req.params.id;
+      const sb = getServerSupabase();
+      if (!sb) {
+        return res.status(503).json({ success: false, message: "Database connection not available." });
+      }
+      const { error } = await sb.from("products").delete().eq("id", productId);
+      if (error) {
+        return res.status(500).json({ success: false, message: error.message });
+      }
+      catalogCache = null;
+      return res.json({ success: true, message: `Product ${productId} deleted successfully` });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err?.message || "Failed to delete product." });
+    }
+  });
   app.post("/api/order", orderCheckoutLimiter, async (req, res) => {
     try {
       const rawIdempotencyKey = (req.headers["x-idempotency-key"] || req.body.idempotencyKey || req.body.id || "").toString().trim();
@@ -1111,6 +1619,20 @@ async function startServer() {
         });
       }
       const validatedOrder = parseResult.data;
+      const computedItemTotal = validatedOrder.items.reduce((sum, it) => {
+        const itemPrice = typeof it.product?.price === "number" ? it.product.price : 0;
+        return sum + itemPrice * (it.quantity || 1);
+      }, 0);
+      const computedGrandTotal = Math.max(
+        0,
+        computedItemTotal + (validatedOrder.deliveryFee || 0) + (validatedOrder.handlingFee || 0) - (validatedOrder.discount || 0)
+      );
+      if (Math.abs(validatedOrder.totalAmount - computedGrandTotal) > 1) {
+        return res.status(400).json({
+          success: false,
+          message: `Price mismatch: Computed total is \u20B9${computedGrandTotal}, but submitted total was \u20B9${validatedOrder.totalAmount}.`
+        });
+      }
       const formattedServerItems = validatedOrder.items.map((it) => {
         const color = it.selectedColor || it.product?.selectedColor || void 0;
         const baseName = it.product?.name || "Electrical Item";
@@ -1477,13 +1999,13 @@ ${itemsListText}
         let matches = false;
         const itemUserId = item.userId || item.user_id;
         const itemScope = item.userScope || item.scope;
-        const itemPhone = (item.receiverPhone || item.phone || "").replace(/\D/g, "").slice(-10);
-        const itemEmail = (item.receiverEmail || item.email || "").trim().toLowerCase();
+        const itemPhone = (item.receiverPhone || item.receiver_phone || item.phone || "").replace(/\D/g, "").slice(-10);
+        const itemEmail = (item.receiverEmail || item.receiver_email || item.email || "").trim().toLowerCase();
         if (cleanUserId && itemUserId && String(itemUserId) === cleanUserId) {
           matches = true;
         } else if (cleanScope && itemScope && String(itemScope) === cleanScope) {
           matches = true;
-        } else if (cleanPhone && itemPhone && itemPhone === cleanPhone) {
+        } else if (cleanPhone && itemPhone && (itemPhone === cleanPhone || cleanPhone.includes(itemPhone) || itemPhone.includes(cleanPhone))) {
           matches = true;
         } else if (cleanEmail && itemEmail && itemEmail === cleanEmail) {
           matches = true;
@@ -1492,6 +2014,13 @@ ${itemsListText}
         }
         if (matches && !collectedMap.has(item.id)) {
           collectedMap.set(item.id, item);
+        }
+      }
+      if (collectedMap.size === 0 && fileAddresses.length > 0) {
+        for (const item of fileAddresses) {
+          if (item && item.id && !collectedMap.has(item.id)) {
+            collectedMap.set(item.id, item);
+          }
         }
       }
       const addresses = Array.from(collectedMap.values()).sort((a, b) => {
@@ -1693,6 +2222,110 @@ ${itemsListText}
       return res.status(500).json({ success: false, message: err.message || "Failed to record booking" });
     }
   });
+  app.get("/api/technicians/:id/reviews", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const techId = req.params.id;
+      const allReviews = loadTechnicianReviewsFile();
+      const techReviews = allReviews.filter((r) => r.technicianId === techId);
+      return res.json({
+        success: true,
+        reviews: techReviews
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch reviews" });
+    }
+  });
+  app.post("/api/technicians/:id/reviews", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const techId = req.params.id;
+      const { customerName, area, rating, comment, serviceType } = req.body || {};
+      if (!customerName || !customerName.trim()) {
+        return res.status(400).json({ success: false, message: "Customer name is required" });
+      }
+      if (!rating || Number(rating) < 1 || Number(rating) > 5) {
+        return res.status(400).json({ success: false, message: "Valid rating between 1 and 5 is required" });
+      }
+      if (!comment || !comment.trim()) {
+        return res.status(400).json({ success: false, message: "Review comment is required" });
+      }
+      const allReviews = loadTechnicianReviewsFile();
+      const newReview = {
+        id: `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        technicianId: techId,
+        customerName: customerName.trim(),
+        area: (area || "Kolkata").trim(),
+        rating: Math.min(5, Math.max(1, Number(rating))),
+        date: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }),
+        comment: comment.trim(),
+        verifiedJob: true,
+        serviceType: (serviceType || "Service Inspection").trim(),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      allReviews.unshift(newReview);
+      writeTechnicianReviewsFile(allReviews);
+      const techReviews = allReviews.filter((r) => r.technicianId === techId);
+      return res.status(201).json({
+        success: true,
+        message: "Review successfully saved to server",
+        review: newReview,
+        reviews: techReviews
+      });
+    } catch (err) {
+      console.error("Error saving technician review:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to save review" });
+    }
+  });
+  app.post("/api/technicians/generate-description", async (req, res) => {
+    try {
+      const { name, title, primarySector, subSectors, experienceYears, skills, about } = req.body || {};
+      const apiKey = process.env.GEMINI_API_KEY;
+      const fallbackDesc = `${experienceYears || 5}+ years experienced ${title || "Electrical Specialist"} specialized in ${subSectors && subSectors[0] || primarySector || "electrical installations"} with verified field expertise across Kolkata.`;
+      if (!apiKey) {
+        return res.json({
+          success: true,
+          description: fallbackDesc,
+          aiPowered: false
+        });
+      }
+      const ai = new import_genai.GoogleGenAI({
+        apiKey,
+        httpOptions: { headers: { "User-Agent": "aistudio-build" } }
+      });
+      const prompt = `Write a crisp, single-sentence professional summary (under 25 words) for an electrical technician profile with the following details:
+- Name: ${name}
+- Profession / Title: ${title}
+- Primary Sector: ${primarySector}
+- Sub-specialties: ${Array.isArray(subSectors) ? subSectors.join(", ") : subSectors}
+- Experience: ${experienceYears} years
+- Key Skills: ${Array.isArray(skills) ? skills.map((s) => typeof s === "string" ? s : s.name).join(", ") : skills}
+- Background: ${about}
+
+Tone: direct, confident, objective. Output ONLY the single sentence. No quotation marks, no markdown, no prefixes.`;
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+      });
+      const generated = response.text ? response.text.trim().replace(/^["']|["']$/g, "") : fallbackDesc;
+      return res.json({
+        success: true,
+        description: generated || fallbackDesc,
+        aiPowered: true
+      });
+    } catch (err) {
+      console.warn("AI description generation error:", err);
+      return res.json({
+        success: true,
+        description: `${req.body?.experienceYears || 5}+ years experienced electrical specialist with verified credentials across Kolkata.`,
+        aiPowered: false
+      });
+    }
+  });
   app.get("/api/email-status", (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;
     const isConfigured = Boolean(apiKey && apiKey !== "MY_RESEND_API_KEY" && apiKey.trim() !== "");
@@ -1742,6 +2375,20 @@ ${itemsListText}
         subject = subject || `\u26A1 Service Booking Confirmed #${booking.id} - Giriraj Power Wiring`;
         html = html || generateWiringBookingEmailHtml(booking, customerName || booking.contactName || "Customer");
         text = text || `Your wiring consultation booking #${booking.id} has been confirmed for ${booking.projectType} at ${booking.siteAddress}.`;
+      } else if (type === "login_alert") {
+        subject = subject || `\u{1F6E1}\uFE0F Security Alert: New sign-in to your BuildNow account`;
+        html = html || generateLoginAlertEmailHtml({
+          customerName: customerName || "Customer",
+          email: to,
+          loginTime: req.body?.loginTime || (/* @__PURE__ */ new Date()).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) + " (IST)",
+          ipAddress: req.body?.ipAddress || "Protected",
+          location: req.body?.location || "Kolkata, West Bengal, India",
+          device: req.body?.device || "Mobile Device",
+          os: req.body?.os || "Android",
+          browser: req.body?.browser || "BuildNow App",
+          loginMethod: req.body?.loginMethod || "Email & Password"
+        });
+        text = text || `Security Alert: A new sign-in was detected on your BuildNow account (${to}) at ${req.body?.loginTime || "recently"}. Location: ${req.body?.location || "Kolkata, India"}. If this wasn't you, secure your account at https://www.girirajpower.in/login`;
       } else if (type === "test_email") {
         subject = subject || "\u26A1 Resend Email Verification - Giriraj Power Kolkata";
         html = html || generateTestEmailHtml(customerName || "Valued Customer");
@@ -1776,6 +2423,112 @@ ${itemsListText}
       return res.status(500).json({
         success: false,
         message: err.message || "An unexpected error occurred while sending email.",
+        error: String(err)
+      });
+    }
+  });
+  const recentLoginAlerts = /* @__PURE__ */ new Map();
+  app.post("/api/auth/login-notification", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const {
+        email,
+        name,
+        userId,
+        loginMethod,
+        device,
+        os,
+        browser,
+        clientTime,
+        clientTimeFormatted,
+        clientLocation,
+        force
+      } = req.body || {};
+      const cleanEmail = (email || "").trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+        return res.status(400).json({
+          success: false,
+          message: "A valid email address is required to dispatch login notification."
+        });
+      }
+      const now = Date.now();
+      const lastSent = recentLoginAlerts.get(cleanEmail);
+      if (!force && lastSent && now - lastSent < 6e4) {
+        return res.status(200).json({
+          success: true,
+          message: "Login alert recently dispatched; duplicate suppressed.",
+          debounced: true
+        });
+      }
+      recentLoginAlerts.set(cleanEmail, now);
+      const forwarded = req.headers["x-forwarded-for"];
+      let clientIp = "";
+      if (typeof forwarded === "string") {
+        clientIp = forwarded.split(",")[0].trim();
+      } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+        clientIp = forwarded[0].trim();
+      } else {
+        clientIp = req.socket.remoteAddress || req.ip || "";
+      }
+      if (clientIp.startsWith("::ffff:")) {
+        clientIp = clientIp.replace("::ffff:", "");
+      }
+      let finalLocation = (clientLocation || "").trim();
+      if (!finalLocation) {
+        const cfCity = req.headers["cf-ipcity"];
+        const cfRegion = req.headers["cf-ipregion"];
+        const cfCountry = req.headers["cf-ipcountry"];
+        if (cfCity || cfRegion || cfCountry) {
+          finalLocation = [cfCity, cfRegion, cfCountry === "IN" ? "India" : cfCountry].filter(Boolean).join(", ");
+        }
+      }
+      if (!finalLocation || finalLocation === "Unknown" || finalLocation.toLowerCase().includes("undefined")) {
+        finalLocation = "Kolkata, West Bengal, India";
+      }
+      const displayTime = clientTimeFormatted || (/* @__PURE__ */ new Date()).toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        dateStyle: "full",
+        timeStyle: "medium"
+      }) + " (IST)";
+      const customerName = name || cleanEmail.split("@")[0] || "Valued Customer";
+      const html = generateLoginAlertEmailHtml({
+        customerName,
+        email: cleanEmail,
+        loginTime: displayTime,
+        ipAddress: clientIp || "Protected",
+        location: finalLocation,
+        device: device || "Mobile Device",
+        os: os || "Android",
+        browser: browser || "BuildNow App",
+        loginMethod: loginMethod || "Email & Password"
+      });
+      const subject = `\u{1F6E1}\uFE0F Security Alert: New sign-in to your BuildNow account (${(/* @__PURE__ */ new Date()).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })} IST)`;
+      const text = `Hello ${customerName},
+
+A new login was detected on your BuildNow account (${cleanEmail}) on ${displayTime}.
+Location: ${finalLocation}
+Device: ${device || "Mobile"} (${os || "Android"})
+Browser: ${browser || "BuildNow App"}
+Method: ${loginMethod || "Password"}
+
+If this was you, no action is required.
+If you did not make this login, please secure your account immediately at https://www.girirajpower.in/login or call support at +91 87774 00280.`;
+      const dispatchResult = await dispatchResendEmail({
+        to: cleanEmail,
+        subject,
+        html,
+        text
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Security login notification successfully dispatched.",
+        details: dispatchResult
+      });
+    } catch (err) {
+      console.error("[Login Notification Handler Error]:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to dispatch login notification.",
         error: String(err)
       });
     }
@@ -2250,7 +3003,7 @@ ${(order.discount || 0) > 0 ? `\u{1F39F}\uFE0F *Discount:* -\u20B9${order.discou
 Customer is located in ${userArea || "Kolkata Metropolitan Area"} (PIN: ${pincode || "700039"}).
 Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBSEDCL standards, conduit sizing, cement and TMT recommendations) and reference Kolkata locations like Kasba, Nator Park, Salt Lake Sector V, New Town, Park Street, or Gariahat where relevant.`;
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: `${systemPrompt}
 
 Customer question: ${prompt}`,
@@ -2368,7 +3121,7 @@ Knowledge Base & Service Details:
 User Question: ${userLatestMessage}`
       ];
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: formattedContents
       });
       const responseText = response.text || "I am here to help you with your BuildNow orders, delivery, wire technical questions, and store support.";
@@ -2511,7 +3264,7 @@ Respond ONLY with a valid JSON object matching the following structure:
   ]
 }`;
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -2573,9 +3326,32 @@ Respond ONLY with a valid JSON object matching the following structure:
       });
     }
   });
+  app.get("/.well-known/assetlinks.json", (req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    const assetLinksPath = import_path.default.join(process.cwd(), "public", ".well-known", "assetlinks.json");
+    res.sendFile(assetLinksPath);
+  });
+  app.get(["/manifest.json", "/manifest.webmanifest"], (req, res) => {
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const manifestPath = import_path.default.join(process.cwd(), "public", "manifest.json");
+    res.sendFile(manifestPath);
+  });
+  app.use("/icons", import_express.default.static(import_path.default.join(process.cwd(), "public", "icons"), {
+    setHeaders: (res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    }
+  }));
   if (process.env.NODE_ENV !== "production") {
     const vite = await (0, import_vite.createServer)({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: true
+      },
       appType: "spa"
     });
     app.use(vite.middlewares);

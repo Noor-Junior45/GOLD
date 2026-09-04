@@ -23,8 +23,10 @@ import {
 } from 'lucide-react';
 import { Product } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { apiUrl } from '../lib/apiBase';
 import { ProductCardImage } from './ProductCardImage';
 import { hapticLight, hapticSelection } from '../utils/haptics';
+import { getFlattenedSpecifications } from '../utils/productSpecifications';
 
 interface ConstructionPageProps {
   onAddToCart: (product: Product) => void;
@@ -187,23 +189,44 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Construction Products directly and exclusively from Supabase backend
+  // Fetch Construction Products from Supabase or Backend API
   const loadConstructionProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*');
+      let rows: any[] = [];
 
-      if (error) {
-        console.warn('Error loading construction products from Supabase:', error);
-        setRawProducts([]);
-        return;
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          rows = data;
+        }
+      } catch (sbErr) {
+        console.warn('Direct Supabase notice:', sbErr);
       }
 
-      if (data && data.length > 0) {
+      // If direct Supabase query was empty or failed, fetch via backend API
+      if (rows.length === 0) {
+        try {
+          const res = await fetch(apiUrl('/api/products'), {
+            headers: { 'Accept': 'application/json' },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json && Array.isArray(json.products) && json.products.length > 0) {
+              rows = json.products;
+            }
+          }
+        } catch (apiErr) {
+          console.warn('Backend API notice:', apiErr);
+        }
+      }
+
+      if (rows.length > 0) {
         // Filter rows that belong to construction category
-        const constructionRows = data.filter((row) => {
+        const constructionRows = rows.filter((row) => {
           const cat = (row.category || '').toLowerCase().trim();
           const sub = (row.subcategory || row.sub_category || '').toLowerCase().trim();
           const name = (row.name || '').toLowerCase().trim();
@@ -289,7 +312,10 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
               stockCount: Number(row.stock_quantity ?? row.stock_count ?? row.stockCount ?? 10),
               tags: Array.isArray(row.tags) ? row.tags : (typeof row.tags === 'string' ? row.tags.split(',').map((t: string) => t.trim()) : [row.brand || 'Giriraj', 'Construction']),
               isEmergency: false,
-              specs: typeof row.specifications === 'object' && row.specifications !== null ? row.specifications : (typeof row.specs === 'object' && row.specs !== null ? row.specs : {}),
+              specs: getFlattenedSpecifications(row.specifications || row.specs, row.brand).reduce((acc, curr) => {
+                acc[curr.key] = curr.value;
+                return acc;
+              }, {} as Record<string, string>),
               description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
             };
           });
