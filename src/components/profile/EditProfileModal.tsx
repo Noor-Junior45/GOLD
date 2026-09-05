@@ -57,7 +57,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (isOtpStep && otpTimer > 0) {
       timer = setTimeout(() => setOtpTimer((prev) => prev - 1), 1000);
     }

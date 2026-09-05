@@ -669,7 +669,7 @@ export default function App() {
       }
 
       // If user is not at home root, navigate back
-      const currentPath = window.location.pathname;
+      const currentPath = location.pathname;
       if (currentPath !== '/' && currentPath !== '') {
         navigate(-1);
       } else {
@@ -687,6 +687,7 @@ export default function App() {
     isDeviceLocationPromptOpen,
     isAiAssistantOpen,
     isInstallModalOpen,
+    location.pathname,
     navigate,
   ]);
 

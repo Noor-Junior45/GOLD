@@ -48,7 +48,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
   // Magic Link cooldown timer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (magicLinkCooldown > 0) {
       interval = setInterval(() => {
         setMagicLinkCooldown((prev) => prev - 1);

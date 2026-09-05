@@ -15,8 +15,7 @@ import {
   Clock,
   FileText,
   Lock,
-  Heart,
-  Plus
+  Heart
 } from 'lucide-react';
 import { Order, SavedAddress, UserProfile, CartItem, Product, WalletTransaction } from '../types';
 import { OrderHistoryView } from './OrderHistoryView';
@@ -662,30 +661,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div>
                 <p className="text-base sm:text-lg font-normal text-slate-800">Terms of Service</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-          </button>
-
-          {/* 10. Add New Product (Admin & Inventory Management) */}
-          <button
-            id="btn-profile-add-product"
-            onClick={() => {
-              if (onOpenAddProduct) {
-                onOpenAddProduct();
-              } else {
-                window.dispatchEvent(new CustomEvent('open-add-product'));
-              }
-            }}
-            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-emerald-50/50 transition-colors text-left cursor-pointer group bg-emerald-50/20"
-          >
-            <div className="flex items-center gap-3.5 sm:gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                <Plus className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-base sm:text-lg font-medium text-slate-800">Add Product to Store</p>
-                <p className="text-xs text-slate-500">Add new products to backend database & catalog</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />

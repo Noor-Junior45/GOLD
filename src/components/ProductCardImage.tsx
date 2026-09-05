@@ -40,7 +40,7 @@ export const ProductCardImage: React.FC<ProductCardImageProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasMultipleImages = allImages.length > 1;
 
